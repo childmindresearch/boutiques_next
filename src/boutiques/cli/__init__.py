@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import typer
 
-from . import example, execute, validate, version
+from . import example, execute, schema, validate, version
 
 app = typer.Typer(
     name="bosh",
@@ -20,7 +20,7 @@ app = typer.Typer(
     add_completion=False,
 )
 
-for module in (validate, example, execute, version):
+for module in (validate, example, execute, schema, version):
     module.register(app)
 
 

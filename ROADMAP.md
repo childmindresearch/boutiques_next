@@ -41,6 +41,8 @@ what's still open.
   command-line string.
 - `bosh exec launch <desc> <invocation> [-r runtime] [--cwd dir]
   [--runtime-args "…"]` — actually runs it.
+- `bosh schema-export [--output DIR] [--version V] [--stdout]` — emits
+  the JSON Schema for one or both versions, ready for hosting.
 - `bosh version`.
 - All commands accept paths *or* http(s) URLs; GitHub blob URLs are
   auto-rewritten to raw.
@@ -101,10 +103,9 @@ direction or upstream consensus moved elsewhere:
 ### Near-term
 - **Docs site.** Reframe the 7 styxbook spec docs into `docs/` (mkdocs
   Material), publish to GH Pages alongside the JSON Schema artifacts.
-- **`bosh schema-export` CLI.** Function exists; needs a CLI hook so CI
-  can build the schemas to `docs/schema/{0.5,0.5+styx}/`.
 - **CI workflow.** GitHub Actions running `ruff check && ruff format
-  --check && mypy && pytest` on push and PR.
+  --check && mypy && pytest` on push and PR, plus `bosh schema-export`
+  feeding the GH Pages publish step.
 - **Pre-commit hooks** for the same.
 
 ### Medium-term
