@@ -2,34 +2,45 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Union
 
-from boutiques.invocation import InvocationModelError
 from boutiques.loader import AnyDescriptor
 from boutiques.models.v05.inputs import FileInput, FlagInput, NumberInput, StringInput
-from boutiques.models.v05_styx.inputs import SubCommandInput, SubCommandUnionInput
+from boutiques.models.v05_styx.inputs import (
+    SubCommandInput,
+    SubCommandType,
+    SubCommandUnionInput,
+)
 
 
 def generate(descriptor: AnyDescriptor, complete: bool = False) -> dict[str, Any]:
     """Return a sample invocation dict for ``descriptor``.
 
     By default, required inputs are populated. With ``complete=True``,
-    optional inputs are populated as well.
+    optional inputs are populated as well. Sub-command unions pick the
+    first candidate.
     """
+    return _generate(descriptor, complete=complete)
+
+
+def _generate(
+    target: Union[AnyDescriptor, SubCommandType],
+    complete: bool,
+) -> dict[str, Any]:
     invocation: dict[str, Any] = {}
-    for inp in descriptor.inputs:
+    for inp in target.inputs or []:
         if inp.optional and not complete:
             continue
-        invocation[inp.id] = _example_value(inp)
+        invocation[inp.id] = _example_value(inp, complete=complete)
     return invocation
 
 
-def _example_value(inp: Any) -> Any:
-    if isinstance(inp, (SubCommandInput, SubCommandUnionInput)):
-        raise InvocationModelError(
-            f"Example generation does not yet support sub-command inputs "
-            f"(input id={inp.id!r})."
-        )
+def _example_value(inp: Any, complete: bool) -> Any:
+    if isinstance(inp, SubCommandInput):
+        return _generate(inp.type, complete=complete)
+    if isinstance(inp, SubCommandUnionInput):
+        chosen = inp.type[0]
+        return {"id": chosen.id, **_generate(chosen, complete=complete)}
 
     base = _scalar_example(inp)
     if getattr(inp, "list_", False):

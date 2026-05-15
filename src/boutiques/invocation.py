@@ -1,19 +1,19 @@
 """Dynamically construct a Pydantic model for a descriptor's invocations.
 
-For a given descriptor, ``invocation_model_for(descriptor)`` returns a
-Pydantic ``BaseModel`` subclass whose fields mirror the descriptor's
-inputs (types, constraints, optionality). Validating a raw invocation
-dict against this model gives free type checking, range checks, and
-choice enforcement with structured error messages.
+``invocation_model_for(descriptor_or_subcommand)`` returns a Pydantic
+``BaseModel`` subclass whose fields mirror the descriptor's inputs:
+types, choices (``Literal``), optionality, and list wrapping. Sub-command
+inputs recurse — a ``SubCommandInput`` becomes a nested model, a
+``SubCommandUnionInput`` becomes a discriminated union over the
+candidates, discriminated by an injected ``id`` literal.
 
-Sub-command inputs (``SubCommandInput``, ``SubCommandUnionInput``) are
-not yet handled here — they need their own discriminated-union model.
-A clear error is raised when a sub-command input is encountered.
+Validating a raw invocation dict against this model yields free type
+checking with structured Pydantic error messages.
 """
 
 from __future__ import annotations
 
-from typing import Any, Literal, Union
+from typing import Annotated, Any, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
@@ -24,39 +24,70 @@ from boutiques.models.v05.inputs import (
     NumberInput,
     StringInput,
 )
-from boutiques.models.v05_styx.inputs import SubCommandInput, SubCommandUnionInput
+from boutiques.models.v05_styx.inputs import (
+    SubCommandInput,
+    SubCommandType,
+    SubCommandUnionInput,
+)
 
 
 class InvocationModelError(Exception):
     """Raised when the invocation model cannot be built for a descriptor."""
 
 
-def invocation_model_for(descriptor: AnyDescriptor) -> type[BaseModel]:
-    """Return a Pydantic model that validates invocations for ``descriptor``."""
+def invocation_model_for(
+    descriptor_or_subcommand: Union[AnyDescriptor, SubCommandType],
+) -> type[BaseModel]:
+    """Return a Pydantic model that validates invocations for the given target.
+
+    Works for top-level descriptors and recursively for ``SubCommandType``
+    instances. The ``id`` discriminator field expected on sub-command
+    union members is injected by ``_subcommand_model``, not here.
+    """
+    return _build_model(descriptor_or_subcommand, inject_id=None)
+
+
+def _build_model(
+    target: Union[AnyDescriptor, SubCommandType],
+    inject_id: Union[str, None],
+) -> type[BaseModel]:
     fields: dict[str, tuple[Any, Any]] = {}
-    for inp in descriptor.inputs:
+
+    if inject_id is not None:
+        # Required discriminator for SubCommandUnion members.
+        fields["id"] = (Literal[inject_id], Field(...))
+
+    inputs = target.inputs or []
+    for inp in inputs:
         py_name, py_type, default = _field_spec(inp)
+        if py_name == "id" and inject_id is not None:
+            raise InvocationModelError(
+                f"Sub-command {target.id!r} has an input also named 'id', "
+                "which collides with the discriminator field."
+            )
         fields[py_name] = (py_type, default)
 
-    model_name = f"{_sanitize(descriptor.name)}Invocation"
+    name_source = getattr(target, "name", None) or getattr(target, "id", "Descriptor")
+    model_name = f"{_sanitize(name_source)}Invocation"
     config = ConfigDict(populate_by_name=True, extra="forbid")
     return create_model(model_name, __config__=config, **fields)
 
 
 def _field_spec(inp: Any) -> tuple[str, Any, Any]:
     """Return ``(python_field_name, python_type, pydantic_field_default)``."""
-    if isinstance(inp, (SubCommandInput, SubCommandUnionInput)):
-        raise InvocationModelError(
-            f"Sub-command inputs are not yet supported by invocation_model_for "
-            f"(input id={inp.id!r})."
-        )
-
-    base_type = _python_type_of(inp)
-    is_list = bool(getattr(inp, "list_", False))
-    py_type = list[base_type] if is_list else base_type  # type: ignore[valid-type]
-
     py_name = _safe_identifier(inp.id)
     alias = inp.id
+
+    if isinstance(inp, SubCommandInput):
+        nested = _build_model(inp.type, inject_id=None)
+        py_type = nested
+    elif isinstance(inp, SubCommandUnionInput):
+        members = tuple(_build_model(sc, inject_id=sc.id) for sc in inp.type)
+        py_type = Annotated[Union[members], Field(discriminator="id")]
+    else:
+        base_type = _python_type_of(inp)
+        is_list = bool(getattr(inp, "list_", False))
+        py_type = list[base_type] if is_list else base_type  # type: ignore[valid-type]
 
     if inp.optional:
         py_type = Union[py_type, None]
@@ -85,14 +116,19 @@ def _python_type_of(inp: Any) -> Any:
 
 
 def _safe_identifier(input_id: str) -> str:
-    """Map an input ID (which may start with a digit) to a Python identifier."""
-    if input_id and input_id[0].isdigit():
-        return f"_{input_id}"
+    """Map an input ID to a Pydantic-safe field name.
+
+    Pydantic forbids field names with leading underscores (reserved for
+    private attributes), and Python identifiers cannot start with a
+    digit. We prefix with ``f_`` when either constraint would be violated.
+    """
+    if input_id and (input_id[0].isdigit() or input_id.startswith("_")):
+        return f"f_{input_id}"
     return input_id
 
 
 def _sanitize(name: str) -> str:
-    """Sanitize a descriptor name for use in a Python class name."""
+    """Sanitize a name for use in a Python class name."""
     cleaned = "".join(c if c.isalnum() else "_" for c in name)
     if cleaned and cleaned[0].isdigit():
         cleaned = f"_{cleaned}"
