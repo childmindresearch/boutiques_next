@@ -19,7 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from boutiques.models.common import IdStr, NonEmptyStr
 from boutiques.models.v05.inputs import (
-    FileInput,
+    FileInput as _V05FileInput,
     FlagInput,
     NumberInput,
     StringInput,
@@ -27,6 +27,20 @@ from boutiques.models.v05.inputs import (
     _ListMixin,
 )
 from boutiques.models.v05.outputs import Output
+
+
+class FileInput(_V05FileInput):
+    """v0.5+styx FileInput — adds Styx-spec ``mutable`` and ``resolve-parent``."""
+
+    mutable: Optional[bool] = Field(
+        default=None,
+        description="The tool may modify the input file in place.",
+    )
+    resolve_parent: Optional[bool] = Field(
+        alias="resolve-parent",
+        default=None,
+        description="The full parent directory of this file must be visible to the tool.",
+    )
 
 
 class SubCommandType(BaseModel):

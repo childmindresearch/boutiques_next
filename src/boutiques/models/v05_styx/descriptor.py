@@ -31,10 +31,15 @@ class Descriptor(BaseModel):
     # Required
     name: NonEmptyStr = Field(description="Tool name.")
     description: NonEmptyStr = Field(description="Tool description.")
-    tool_version: NonEmptyStr = Field(alias="tool-version", description="Tool version.")
     command_line: NonEmptyStr = Field(alias="command-line", description="Command-line template.")
     schema_version: Literal["0.5+styx"] = Field(alias="schema-version")
     inputs: list[Input] = Field(min_length=1)
+
+    # Recommended (lint warns when absent) but not required by v0.5+styx, since
+    # niwrap-style descriptors carry version metadata in sidecar packaging.
+    tool_version: Optional[NonEmptyStr] = Field(
+        alias="tool-version", default=None, description="Tool version."
+    )
 
     # Optional metadata
     author: Optional[NonEmptyStr] = Field(default=None)

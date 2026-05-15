@@ -1,9 +1,11 @@
 """Validate a Boutiques descriptor.
 
-For now, ``validate`` is a thin wrapper over the Pydantic model: it returns
-a ``ValidationResult`` with the structural errors collected by Pydantic.
-Cross-field semantic checks (e.g. ``min-list-entries`` only when
-``list: true``) will land here as they are added.
+``validate`` runs three tiers in order:
+
+1. **Structural** — Pydantic parsing. Failure = hard error.
+2. **Semantic** (cross-field) — checks like ``min-list-entries`` only when
+   ``list: true``. To be added; failure = hard error.
+3. **Lint** — soft advisories from :mod:`boutiques.lint`. Never blocks.
 """
 
 from __future__ import annotations
@@ -12,6 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Union
 
+from boutiques.lint import LintIssue, lint
 from boutiques.loader import AnyDescriptor, DescriptorLoadError, load
 
 
@@ -32,15 +35,19 @@ class ValidationResult:
 
     descriptor: Union[AnyDescriptor, None] = None
     errors: list[ValidationError] = field(default_factory=list)
+    warnings: list[LintIssue] = field(default_factory=list)
 
     @property
     def ok(self) -> bool:
+        """True if there are no hard errors. Warnings do not affect this."""
         return not self.errors
 
     def format(self) -> str:
-        if self.ok:
-            return "OK"
-        return "\n".join(str(e) for e in self.errors)
+        if not self.ok:
+            return "\n".join(str(e) for e in self.errors)
+        if self.warnings:
+            return "OK with warnings:\n" + "\n".join(str(w) for w in self.warnings)
+        return "OK"
 
 
 def validate(source: Union[str, Path, dict[str, Any]]) -> ValidationResult:
@@ -49,7 +56,8 @@ def validate(source: Union[str, Path, dict[str, Any]]) -> ValidationResult:
         descriptor = load(source)
     except DescriptorLoadError as exc:
         return ValidationResult(errors=_parse_pydantic_message(str(exc)))
-    return ValidationResult(descriptor=descriptor)
+    warnings = lint(descriptor)
+    return ValidationResult(descriptor=descriptor, warnings=warnings)
 
 
 def _parse_pydantic_message(message: str) -> list[ValidationError]:
