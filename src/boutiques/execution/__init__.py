@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shlex
 from typing import Any
 
 from boutiques.execution.resolve import resolve
@@ -9,8 +10,8 @@ from boutiques.loader import AnyDescriptor
 
 
 def simulate(descriptor: AnyDescriptor, invocation: dict[str, Any]) -> str:
-    """Return the command-line that ``launch`` would execute."""
-    return resolve(descriptor, invocation)
+    """Return the resolved command-line as a shell-safe string."""
+    return shlex.join(resolve(descriptor, invocation))
 
 
 __all__ = ["resolve", "simulate"]

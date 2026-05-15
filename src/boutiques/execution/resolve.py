@@ -1,27 +1,34 @@
-"""Resolve a descriptor + invocation into a command-line string.
+"""Resolve a descriptor + invocation into an argv token list.
 
-Substitution rules (matching the v0.5 spec, extended for SubCommand):
+The template is tokenized once via :func:`shlex.split`. Each template
+token is then:
 
-- For each input, locate its ``value-key`` token inside the relevant
-  ``command-line`` template.
-- ``Flag`` inputs: emit the ``command-line-flag`` if the value is true;
-  otherwise emit nothing.
-- Other inputs: format the value, prefixed by ``command-line-flag`` +
-  ``command-line-flag-separator`` (default single space) when the flag
-  is present.
-- List inputs: items are joined with ``list-separator`` (default single
-  space) before the flag prefix is applied.
-- ``SubCommandInput`` / ``SubCommandUnionInput``: recursively resolve the
-  nested command-line using the chosen sub-command's inputs.
-- Tokens with no corresponding invocation value (optional inputs that
-  were omitted) are deleted along with any leading/trailing whitespace.
+- replaced with a list of rendered tokens if it exactly matches an
+  input's ``value-key``;
+- substituted in-place if a value-key appears as a substring of a
+  larger token (e.g. ``--input=[VALUE]``);
+- copied verbatim otherwise.
 
-Whitespace is collapsed at the end of each resolved command-line.
+Rendering rules:
+
+- ``Flag`` inputs emit ``[command-line-flag]`` if true, ``[]`` otherwise.
+- Scalars emit ``[value]`` or, with a flag whose separator is whitespace,
+  ``[flag, value]``; non-whitespace separators glue flag and value into
+  one token (``--input=value``).
+- Lists with the default (whitespace) separator emit one token per item
+  (each preceded by the flag if present). Custom separators glue items
+  into a single token.
+- ``SubCommandInput`` / ``SubCommandUnionInput`` recursively resolve the
+  nested command-line; the parent flag, if any, prefixes the result.
+
+``simulate()`` wraps :func:`resolve` and joins via :func:`shlex.join` for
+human-readable output. ``launch()`` (forthcoming) consumes the token
+list directly so we can call ``subprocess.run(..., shell=False)``.
 """
 
 from __future__ import annotations
 
-import re
+import shlex
 from typing import Any, Union
 
 from boutiques.invocation import invocation_model_for
@@ -34,8 +41,8 @@ from boutiques.models.v05_styx.inputs import (
 )
 
 
-def resolve(descriptor: AnyDescriptor, invocation: dict[str, Any]) -> str:
-    """Validate the invocation and return the resolved command-line string."""
+def resolve(descriptor: AnyDescriptor, invocation: dict[str, Any]) -> list[str]:
+    """Validate the invocation and return the resolved argv token list."""
     model_cls = invocation_model_for(descriptor)
     parsed = model_cls.model_validate(invocation)
     values = parsed.model_dump(by_alias=True, exclude_none=True)
@@ -46,65 +53,108 @@ def _resolve_template(
     template: str,
     inputs: Union[list, None],
     values: dict[str, Any],
-) -> str:
-    command_line = template
-    for inp in inputs or []:
-        if not inp.value_key:
+) -> list[str]:
+    template_tokens = shlex.split(template)
+    inputs = inputs or []
+    out: list[str] = []
+    for tok in template_tokens:
+        out.extend(_expand_token(tok, inputs, values))
+    return out
+
+
+def _expand_token(
+    token: str,
+    inputs: list,
+    values: dict[str, Any],
+) -> list[str]:
+    # Exact value-key match — render to a token list (possibly empty/multi).
+    for inp in inputs:
+        vk = getattr(inp, "value_key", None)
+        if vk and vk == token:
+            return _render_tokens(inp, values.get(inp.id))
+
+    # Embedded value-key — fall back to scalar substitution within the token.
+    out = token
+    for inp in inputs:
+        vk = getattr(inp, "value_key", None)
+        if not vk or vk not in out:
             continue
-        value = values.get(inp.id)
-        rendered = _render_value(inp, value)
-        command_line = _substitute(command_line, inp.value_key, rendered)
-    return _collapse_whitespace(command_line)
+        scalar = _render_scalar_or_empty(inp, values.get(inp.id))
+        out = out.replace(vk, scalar)
+    return [out] if out else []
 
 
-def _render_value(inp: Any, value: Any) -> str:
+def _render_tokens(inp: Any, value: Any) -> list[str]:
+    """Render an input value as zero or more argv tokens."""
     if isinstance(inp, SubCommandInput):
         if value is None:
-            return ""
-        return _render_subcommand(inp, inp.type, value)
+            return []
+        nested = _resolve_template(inp.type.command_line, inp.type.inputs, value)
+        return _prefix_flag(inp, nested)
 
     if isinstance(inp, SubCommandUnionInput):
         if value is None:
-            return ""
+            return []
         chosen = _choose_subcommand(inp, value)
-        return _render_subcommand(inp, chosen, value)
+        nested = _resolve_template(chosen.command_line, chosen.inputs, value)
+        return _prefix_flag(inp, nested)
 
+    if value is None:
+        return []
+
+    if isinstance(inp, FlagInput):
+        return [inp.command_line_flag] if value else []
+
+    if isinstance(value, list):
+        sep = inp.list_separator
+        if sep is None or sep == " ":
+            value_tokens = [str(v) for v in value]
+        else:
+            value_tokens = [sep.join(str(v) for v in value)]
+    else:
+        value_tokens = [str(value)]
+
+    return _prefix_flag(inp, value_tokens)
+
+
+def _prefix_flag(inp: Any, value_tokens: list[str]) -> list[str]:
+    """Apply ``command-line-flag`` + ``command-line-flag-separator`` to the value tokens."""
+    flag = getattr(inp, "command_line_flag", None)
+    if not flag:
+        return value_tokens
+    sep = getattr(inp, "command_line_flag_separator", None)
+    if sep is None or sep == " ":
+        return [flag, *value_tokens]
+    if not value_tokens:
+        return [flag]
+    # Non-space separator: glue the flag onto the first value token.
+    return [f"{flag}{sep}{value_tokens[0]}", *value_tokens[1:]]
+
+
+def _render_scalar_or_empty(inp: Any, value: Any) -> str:
+    """Render an input as a single scalar string for in-token substitution.
+
+    Used when a value-key appears embedded inside a larger template token
+    (e.g. ``--input=[VALUE]``). Multi-token renderings (lists with a
+    space separator, sub-commands) collapse to a single space-joined
+    string here. The token-level resolver above prefers the exact-match
+    path whenever possible.
+    """
     if value is None or value is False:
-        # Flag with False, or optional input not supplied.
         return ""
     if isinstance(inp, FlagInput):
         return inp.command_line_flag if value else ""
-
+    if isinstance(inp, (SubCommandInput, SubCommandUnionInput)):
+        target: SubCommandType
+        if isinstance(inp, SubCommandInput):
+            target = inp.type
+        else:
+            target = _choose_subcommand(inp, value)
+        return " ".join(_resolve_template(target.command_line, target.inputs, value))
     if isinstance(value, list):
-        separator = inp.list_separator if inp.list_separator is not None else " "
-        body = separator.join(str(v) for v in value)
-    else:
-        body = str(value)
-
-    if inp.command_line_flag:
-        flag_sep = (
-            inp.command_line_flag_separator
-            if inp.command_line_flag_separator is not None
-            else " "
-        )
-        return f"{inp.command_line_flag}{flag_sep}{body}"
-    return body
-
-
-def _render_subcommand(
-    parent_input: Any,
-    sub_command: SubCommandType,
-    value: dict[str, Any],
-) -> str:
-    nested = _resolve_template(sub_command.command_line, sub_command.inputs, value)
-    if parent_input.command_line_flag and nested:
-        flag_sep = (
-            parent_input.command_line_flag_separator
-            if parent_input.command_line_flag_separator is not None
-            else " "
-        )
-        return f"{parent_input.command_line_flag}{flag_sep}{nested}"
-    return nested
+        sep = inp.list_separator if inp.list_separator is not None else " "
+        return sep.join(str(v) for v in value)
+    return str(value)
 
 
 def _choose_subcommand(inp: SubCommandUnionInput, value: dict[str, Any]) -> SubCommandType:
@@ -116,16 +166,3 @@ def _choose_subcommand(inp: SubCommandUnionInput, value: dict[str, Any]) -> SubC
         f"Invocation for input {inp.id!r} selected sub-command id={chosen_id!r}, "
         f"but no candidate with that id exists."
     )
-
-
-def _substitute(template: str, value_key: str, rendered: str) -> str:
-    if rendered:
-        return template.replace(value_key, rendered)
-    # No value: remove the key plus any single adjacent space so we don't
-    # leave a stranded gap.
-    pattern = re.compile(rf"\s?{re.escape(value_key)}\s?")
-    return pattern.sub(" ", template, count=1)
-
-
-def _collapse_whitespace(s: str) -> str:
-    return re.sub(r"\s+", " ", s).strip()
