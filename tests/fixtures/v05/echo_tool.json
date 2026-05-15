@@ -1,0 +1,21 @@
+{
+  "schema-version": "0.5",
+  "name": "echo_tool",
+  "description": "Trivial tool used by launch CLI tests",
+  "tool-version": "1.0",
+  "command-line": "[PYTHON] -c [SCRIPT]",
+  "inputs": [
+    {
+      "id": "python",
+      "name": "Python interpreter",
+      "type": "String",
+      "value-key": "[PYTHON]"
+    },
+    {
+      "id": "script",
+      "name": "Inline script",
+      "type": "String",
+      "value-key": "[SCRIPT]"
+    }
+  ]
+}

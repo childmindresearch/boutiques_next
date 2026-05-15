@@ -5,6 +5,7 @@ from __future__ import annotations
 import shlex
 from typing import Any
 
+from boutiques.execution.launch import LaunchResult, launch
 from boutiques.execution.resolve import resolve
 from boutiques.loader import AnyDescriptor
 
@@ -14,4 +15,4 @@ def simulate(descriptor: AnyDescriptor, invocation: dict[str, Any]) -> str:
     return shlex.join(resolve(descriptor, invocation))
 
 
-__all__ = ["resolve", "simulate"]
+__all__ = ["LaunchResult", "launch", "resolve", "simulate"]
