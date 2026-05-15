@@ -3,8 +3,8 @@
 ``validate`` runs three tiers in order:
 
 1. **Structural** — Pydantic parsing. Failure = hard error.
-2. **Semantic** (cross-field) — checks like ``min-list-entries`` only when
-   ``list: true``. To be added; failure = hard error.
+2. **Semantic** (cross-field) — from :mod:`boutiques.semantic`. Failure
+   = hard error.
 3. **Lint** — soft advisories from :mod:`boutiques.lint`. Never blocks.
 """
 
@@ -14,19 +14,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Union
 
+from boutiques._errors import ValidationError
 from boutiques.lint import LintIssue, lint
 from boutiques.loader import AnyDescriptor, DescriptorLoadError, load
+from boutiques.semantic import check as _semantic_check
 
-
-@dataclass
-class ValidationError:
-    """A single validation failure with a JSON-pointer-style location."""
-
-    location: str
-    message: str
-
-    def __str__(self) -> str:
-        return f"{self.location}: {self.message}" if self.location else self.message
+__all__ = ["ValidationError", "ValidationResult", "validate"]
 
 
 @dataclass
@@ -56,19 +49,19 @@ def validate(source: Union[str, Path, dict[str, Any]]) -> ValidationResult:
         descriptor = load(source)
     except DescriptorLoadError as exc:
         return ValidationResult(errors=_parse_pydantic_message(str(exc)))
+
+    semantic_errors = _semantic_check(descriptor)
+    if semantic_errors:
+        return ValidationResult(descriptor=descriptor, errors=semantic_errors)
+
     warnings = lint(descriptor)
     return ValidationResult(descriptor=descriptor, warnings=warnings)
 
 
 def _parse_pydantic_message(message: str) -> list[ValidationError]:
-    """Turn Pydantic's multi-line error dump into a list of ``ValidationError``.
-
-    Pydantic 2's default ``str(ValidationError)`` formats each error as
-    ``<location>\\n  <message> [type=...]``. We keep that structure.
-    """
+    """Turn Pydantic's multi-line error dump into a list of ``ValidationError``."""
     errors: list[ValidationError] = []
     lines = [line.rstrip() for line in message.splitlines() if line.strip()]
-    # First line is the summary ("N validation errors for Descriptor"). Skip it.
     body = lines[1:] if lines and "validation error" in lines[0] else lines
     i = 0
     while i < len(body):
