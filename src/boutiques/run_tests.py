@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from boutiques.execution import launch
+from boutiques.execution.runtime.base import RuntimeError_
 from boutiques.invocation_check import InvocationValidationError
 from boutiques.loader import AnyDescriptor
 
@@ -91,6 +92,13 @@ def _run_one(
             exit_code=-1,
             duration_seconds=time.monotonic() - start,
             failures=[f"invocation invalid: {line}" for line in str(exc).splitlines()],
+        )
+    except RuntimeError_ as exc:
+        return TestCaseResult(
+            name=case.name,  # type: ignore[attr-defined]
+            exit_code=-1,
+            duration_seconds=time.monotonic() - start,
+            failures=[f"runtime error: {exc}"],
         )
     duration = time.monotonic() - start
 

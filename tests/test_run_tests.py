@@ -241,6 +241,30 @@ def test_cli_reports_failure_and_exits_one(tmp_path):
     assert "0 passed, 1 failed" in result.stdout
 
 
+def test_missing_binary_surfaces_as_test_failure(tmp_path):
+    """A test case whose command isn't installed fails just that case, not the run."""
+    d = load(
+        {
+            "schema-version": "0.5",
+            "name": "t",
+            "description": "x",
+            "tool-version": "1.0",
+            "command-line": "definitely_not_a_real_binary_42 [X]",
+            "inputs": [{"id": "x", "name": "X", "type": "String", "value-key": "[X]"}],
+            "tests": [
+                {
+                    "name": "wont_run",
+                    "invocation": {"x": "v"},
+                    "assertions": {"exit-code": 0},
+                }
+            ],
+        }
+    )
+    results = run_tests(d, cwd=tmp_path)
+    assert not results.passed
+    assert any("Command not found" in f for f in results.cases[0].failures)
+
+
 def test_cli_no_tests_reports_and_exits_zero(tmp_path):
     descriptor_path = tmp_path / "descriptor.json"
     _write_descriptor(descriptor_path, command_line="[X]")

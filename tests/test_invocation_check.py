@@ -467,6 +467,41 @@ def test_resolve_raises_on_numeric_range_violation():
         resolve(d, {"n": 100})
 
 
+def test_cli_launch_reports_missing_binary_cleanly(tmp_path):
+    """A missing command should surface a clean Runtime error, not a traceback."""
+    import json
+
+    from typer.testing import CliRunner
+
+    from boutiques.cli import app
+
+    descriptor_path = tmp_path / "descriptor.json"
+    descriptor_path.write_text(
+        json.dumps(
+            {
+                "schema-version": "0.5",
+                "name": "missing_tool",
+                "description": "x",
+                "tool-version": "1.0",
+                "command-line": "definitely_not_a_real_binary_xyz123 [X]",
+                "inputs": [
+                    {"id": "x", "name": "X", "type": "String", "value-key": "[X]"},
+                ],
+            }
+        )
+    )
+    inv_path = tmp_path / "inv.json"
+    inv_path.write_text('{"x": "v"}')
+
+    result = CliRunner().invoke(
+        app, ["exec", "launch", str(descriptor_path), str(inv_path), "--cwd", str(tmp_path)]
+    )
+    assert result.exit_code == 2
+    combined = (result.stdout or "") + (result.stderr or "")
+    assert "Command not found" in combined
+    assert "Traceback" not in combined
+
+
 def test_cli_simulate_reports_invocation_error_cleanly(tmp_path):
     """The CLI must report invocation errors as text + exit 1, not crash."""
     import json

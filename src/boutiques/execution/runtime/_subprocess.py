@@ -17,7 +17,7 @@ import time
 from pathlib import Path
 from typing import IO
 
-from boutiques.execution.runtime.base import RunResult
+from boutiques.execution.runtime.base import RunResult, RuntimeError_
 
 
 def run_subprocess(
@@ -31,19 +31,27 @@ def run_subprocess(
     """Run ``argv`` as a subprocess; stream and/or capture its output.
 
     The two threads drain stdout/stderr independently, so neither pipe
-    can deadlock on a full kernel buffer.
+    can deadlock on a full kernel buffer. If the executable cannot be
+    found, a :class:`RuntimeError_` is raised with the offending argv[0]
+    so callers can surface a clean message instead of a Python traceback.
     """
     full_env = {**os.environ, **(env or {})} if env is not None else None
 
-    proc = subprocess.Popen(
-        argv,
-        env=full_env,
-        cwd=str(cwd) if cwd is not None else None,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        bufsize=1,  # line-buffered
-    )
+    try:
+        proc = subprocess.Popen(
+            argv,
+            env=full_env,
+            cwd=str(cwd) if cwd is not None else None,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,  # line-buffered
+        )
+    except FileNotFoundError as exc:
+        executable = argv[0] if argv else "<empty argv>"
+        raise RuntimeError_(
+            f"Command not found: {executable!r}. Is it installed and on PATH?"
+        ) from exc
 
     stdout_buf: list[str] = []
     stderr_buf: list[str] = []
