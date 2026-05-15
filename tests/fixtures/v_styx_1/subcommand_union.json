@@ -1,0 +1,51 @@
+{
+  "schema-version": "0.5+styx",
+  "name": "mri_pipeline",
+  "tool-version": "0.1.0",
+  "description": "Toy MRI pipeline exercising sub-command alternation and lists.",
+  "command-line": "mri [OP] [VOLUMES]",
+  "inputs": [
+    {
+      "id": "op",
+      "name": "Operation",
+      "value-key": "[OP]",
+      "type": [
+        {
+          "id": "blur",
+          "name": "Gaussian blur",
+          "command-line": "blur [SIGMA]",
+          "inputs": [
+            {
+              "id": "sigma",
+              "name": "Sigma",
+              "type": "Number",
+              "value-key": "[SIGMA]",
+              "minimum": 0
+            }
+          ]
+        },
+        {
+          "id": "sharpen",
+          "name": "Sharpen",
+          "command-line": "sharpen [AMOUNT]",
+          "inputs": [
+            {
+              "id": "amount",
+              "name": "Amount",
+              "type": "Number",
+              "value-key": "[AMOUNT]"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "volumes",
+      "name": "Input volumes",
+      "type": "File",
+      "value-key": "[VOLUMES]",
+      "list": true,
+      "min-list-entries": 1
+    }
+  ]
+}
