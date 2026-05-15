@@ -15,6 +15,7 @@ from boutiques.models.v05.outputs import Output
 from boutiques.models.v05.resources import SuggestedResources
 from boutiques.models.v05.tests import TestCase
 from boutiques.models.v05_styx.inputs import Input
+from boutiques.models.v05_styx.stdio_outputs import StderrOutput, StdoutOutput
 
 TagValue = str | list[str] | bool
 
@@ -60,6 +61,16 @@ class Descriptor(BaseModel):
     )
     groups: list[Group] | None = Field(default=None, min_length=1)
     output_files: list[Output] | None = Field(alias="output-files", default=None, min_length=1)
+    stdout_output: StdoutOutput | None = Field(
+        alias="stdout-output",
+        default=None,
+        description="If present, the tool's stdout is captured as this named output.",
+    )
+    stderr_output: StderrOutput | None = Field(
+        alias="stderr-output",
+        default=None,
+        description="If present, the tool's stderr is captured as this named output.",
+    )
     suggested_resources: SuggestedResources | None = Field(
         alias="suggested-resources", default=None
     )

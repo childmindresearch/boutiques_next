@@ -7,7 +7,11 @@ from pathlib import Path
 from typing import Any
 
 from boutiques.execution.mounts import collect_file_mounts
-from boutiques.execution.outputs import ResolvedOutput, resolve_output_paths
+from boutiques.execution.outputs import (
+    ResolvedOutput,
+    resolve_output_paths,
+    resolve_stdio_outputs,
+)
 from boutiques.execution.resolve import resolve
 from boutiques.execution.runtime import docker as _docker
 from boutiques.execution.runtime import local as _local
@@ -66,6 +70,9 @@ def launch(
     )
 
     outputs = resolve_output_paths(descriptor, invocation, work_dir)
+    outputs.extend(
+        resolve_stdio_outputs(descriptor, run_result.stdout, run_result.stderr)
+    )
     return LaunchResult(
         command=argv,
         runtime=runtime,

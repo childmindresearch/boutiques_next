@@ -11,6 +11,7 @@ from boutiques.models.v05_styx.inputs import (
     SubCommandType,
     SubCommandUnionInput,
 )
+from boutiques.models.v05_styx.stdio_outputs import StderrOutput, StdoutOutput
 
 __all__ = [
     "Descriptor",
@@ -18,6 +19,8 @@ __all__ = [
     "FlagInput",
     "Input",
     "NumberInput",
+    "StderrOutput",
+    "StdoutOutput",
     "StringInput",
     "SubCommandInput",
     "SubCommandType",

@@ -17,6 +17,9 @@ what's still open.
 - **Relaxed `tool-version` in v0.5+styx** for niwrap-style descriptors
   that carry version metadata in sidecar packaging. Surfaces as a lint
   warning instead of a hard error.
+- **`stdout-output` / `stderr-output`** (v0.5+styx) — declare the
+  tool's stdout/stderr as named outputs; captured content surfaces in
+  `LaunchResult.outputs[*].content`.
 - **JSON Schema export** for both versions via `boutiques.schema_export`.
 
 ### Validation (three tiers)
@@ -106,11 +109,6 @@ direction or upstream consensus moved elsewhere:
   plus a docs job calling `bosh schema-export -o docs/schema` and
   `mkdocs gh-deploy` to publish the site.
 - **Pre-commit hooks** for the same checks locally.
-- **`stdout-output` / `stderr-output` support.** Spec-defined v0.5+styx
-  fields for capturing tool stdout/stderr as named outputs. Models
-  don't yet accept them — niwrap descriptors using these fields fail
-  to load. Add to `boutiques.models.v05_styx` and surface in
-  `LaunchResult`.
 
 ### Medium-term
 - **Runtime invocation enforcement** for: `value-choices` range checks

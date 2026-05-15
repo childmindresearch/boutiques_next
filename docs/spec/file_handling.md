@@ -160,6 +160,36 @@ Each sub-command body declares its own `output-files`; outputs are
 scoped to the sub-command the invocation selects. See
 [Subcommands](subcommands.md) for the full picture.
 
+## Capturing stdout and stderr (v0.5+styx)
+
+Some tools emit their primary output to stdout (or report structured
+warnings on stderr) rather than writing a file. Two top-level
+descriptor fields declare these streams as named outputs:
+
+```json
+{
+  "stdout-output": {
+    "id": "coordinates",
+    "name": "Extracted coordinates",
+    "description": "Tab-separated coordinate values."
+  },
+  "stderr-output": {
+    "id": "warnings",
+    "name": "Warning log"
+  }
+}
+```
+
+Each declaration has the same shape: a required `id`, optional `name`,
+and optional `description`. They are not nested inside `output-files`
+because they don't have a path — the captured text *is* the output.
+
+After `bosh exec launch` runs, the captured content surfaces in
+`LaunchResult.outputs` as `ResolvedOutput` entries whose `path` is
+`None` and whose `content` field carries the text. The raw streams are
+still available via `LaunchResult.stdout` / `LaunchResult.stderr` for
+callers that don't care about the named declaration.
+
 ## Best practices
 
 - Use `File` for input file paths, `String` for output path *arguments*

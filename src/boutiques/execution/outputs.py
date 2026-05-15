@@ -28,10 +28,19 @@ from boutiques.loader import AnyDescriptor
 
 @dataclass
 class ResolvedOutput:
+    """A declared output after the run.
+
+    ``path`` is set for file-based outputs (``path-template`` /
+    ``conditional-path-template``); ``content`` is set for stdio-based
+    outputs (``stdout-output`` / ``stderr-output``). The two are
+    mutually exclusive.
+    """
+
     id: str
     name: str
-    path: Path | None
-    exists: bool
+    path: Path | None = None
+    exists: bool = False
+    content: str | None = None
 
 
 def resolve_output_paths(
@@ -39,7 +48,12 @@ def resolve_output_paths(
     invocation: dict[str, Any],
     cwd: Path,
 ) -> list[ResolvedOutput]:
-    """Resolve every declared output's path against the invocation values."""
+    """Resolve every declared file output against the invocation values.
+
+    Stdio outputs (``stdout-output`` / ``stderr-output``) are populated
+    by :func:`boutiques.execution.launch.launch` after the run, since
+    they need the captured output content.
+    """
     resolved: list[ResolvedOutput] = []
     for output in descriptor.output_files or []:
         path = _resolve_output(output, descriptor, invocation, cwd)
@@ -49,6 +63,34 @@ def resolve_output_paths(
                 name=output.name,
                 path=path,
                 exists=bool(path and path.exists()),
+            )
+        )
+    return resolved
+
+
+def resolve_stdio_outputs(
+    descriptor: AnyDescriptor,
+    stdout: str,
+    stderr: str,
+) -> list[ResolvedOutput]:
+    """Populate ResolvedOutput entries for any declared stdout-/stderr-output."""
+    resolved: list[ResolvedOutput] = []
+    stdout_decl = getattr(descriptor, "stdout_output", None)
+    if stdout_decl is not None:
+        resolved.append(
+            ResolvedOutput(
+                id=stdout_decl.id,
+                name=stdout_decl.name or stdout_decl.id,
+                content=stdout,
+            )
+        )
+    stderr_decl = getattr(descriptor, "stderr_output", None)
+    if stderr_decl is not None:
+        resolved.append(
+            ResolvedOutput(
+                id=stderr_decl.id,
+                name=stderr_decl.name or stderr_decl.id,
+                content=stderr,
             )
         )
     return resolved

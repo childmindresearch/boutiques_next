@@ -25,6 +25,8 @@ types, how command-lines are formed, and how output files are declared.
 | `url` | Documentation URL. | `"https://fsl.fmrib.ox.ac.uk/fsl/fslwiki"` |
 | `descriptor-url` | URL where the descriptor itself lives. | `"https://github.com/.../bet.json"` |
 | `output-files` | Declared output files. | `[{ "id": "outfile", ... }]` |
+| `stdout-output` | *(v0.5+styx)* Declare the tool's stdout as a named output. See [File handling](file_handling.md#capturing-stdout-and-stderr-v05styx). | `{ "id": "results" }` |
+| `stderr-output` | *(v0.5+styx)* Declare the tool's stderr as a named output. | `{ "id": "log" }` |
 | `container-image` | Container image declaration. See [Advanced features](advanced_features.md#container-images). | `{ "type": "docker", "image": "fsl/bet" }` |
 | `environment-variables` | Variables to set in the execution environment. | `[{ "name": "FSLOUTPUTTYPE", "value": "NIFTI_GZ" }]` |
 | `groups` | Mutual-exclusion / one-required constraints across inputs. See [Advanced features](advanced_features.md#groups). | `[{ "id": "mode", ... }]` |
