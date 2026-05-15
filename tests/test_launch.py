@@ -23,24 +23,9 @@ def _echo_descriptor():
             "tool-version": "1.0",
             "command-line": "[PYTHON] -c [SCRIPT] [MSG]",
             "inputs": [
-                {
-                    "id": "python",
-                    "name": "Python",
-                    "type": "String",
-                    "value-key": "[PYTHON]",
-                },
-                {
-                    "id": "script",
-                    "name": "Script",
-                    "type": "String",
-                    "value-key": "[SCRIPT]",
-                },
-                {
-                    "id": "msg",
-                    "name": "Message",
-                    "type": "String",
-                    "value-key": "[MSG]",
-                },
+                {"id": "python", "name": "P", "type": "String", "value-key": "[PYTHON]"},
+                {"id": "script", "name": "S", "type": "String", "value-key": "[SCRIPT]"},
+                {"id": "msg", "name": "M", "type": "String", "value-key": "[MSG]"},
             ],
         }
     )
@@ -58,6 +43,7 @@ def test_local_runtime_runs_real_subprocess(tmp_path):
         },
         runtime="local",
         cwd=tmp_path,
+        stream=False,
     )
     assert result.exit_code == 0
     assert "hi from boutiques" in result.stdout
@@ -76,6 +62,7 @@ def test_local_runtime_propagates_exit_code(tmp_path):
         },
         runtime="local",
         cwd=tmp_path,
+        stream=False,
     )
     assert result.exit_code == 7
 
@@ -96,29 +83,29 @@ def _docker_descriptor():
     )
 
 
-def test_docker_runtime_wraps_argv(tmp_path):
-    descriptor = _docker_descriptor()
+def _fake_run_subprocess(captured: dict):
+    """A run_subprocess stand-in that records its argv and returns success."""
 
-    captured = {}
-
-    def fake_run(argv, capture_output, text, check):
+    def _impl(argv, **kwargs):
         captured["argv"] = argv
+        captured["kwargs"] = kwargs
+        return RunResult(exit_code=0, stdout="", stderr="", duration_seconds=0.0)
 
-        class _Result:
-            returncode = 0
-            stdout = ""
-            stderr = ""
+    return _impl
 
-        return _Result()
 
-    with patch("boutiques.execution.runtime.docker.subprocess.run", side_effect=fake_run):
-        launch(descriptor, {"x": "hello"}, runtime="docker", cwd=tmp_path)
+def test_docker_runtime_wraps_argv(tmp_path):
+    captured: dict = {}
+    with patch(
+        "boutiques.execution.runtime.docker.run_subprocess",
+        side_effect=_fake_run_subprocess(captured),
+    ):
+        launch(_docker_descriptor(), {"x": "hello"}, runtime="docker", cwd=tmp_path)
 
     argv = captured["argv"]
     assert argv[:3] == ["docker", "run", "--rm"]
     assert "-v" in argv and "-w" in argv
     assert "example/tool" in argv
-    # Tool argv appears after the image reference
     image_idx = argv.index("example/tool")
     assert argv[image_idx + 1 :] == ["do_thing", "hello"]
 
@@ -141,22 +128,12 @@ def test_docker_with_index_prepends_registry(tmp_path):
             },
         }
     )
-
-    captured = {}
-
-    def fake_run(argv, **kwargs):
-        captured["argv"] = argv
-
-        class _Result:
-            returncode = 0
-            stdout = ""
-            stderr = ""
-
-        return _Result()
-
-    with patch("boutiques.execution.runtime.docker.subprocess.run", side_effect=fake_run):
-        # The 'a' input is unused; CLI template has no [A] so simulator drops it
-        launch(descriptor, {"a": "val"}, runtime="docker", cwd=Path.cwd())
+    captured: dict = {}
+    with patch(
+        "boutiques.execution.runtime.docker.run_subprocess",
+        side_effect=_fake_run_subprocess(captured),
+    ):
+        launch(descriptor, {"a": "val"}, runtime="docker", cwd=tmp_path)
 
     assert "docker.io/bids/mriqc" in captured["argv"]
 
@@ -164,28 +141,47 @@ def test_docker_with_index_prepends_registry(tmp_path):
 def test_docker_requires_container_image(tmp_path):
     descriptor = _echo_descriptor()  # no container-image
     with pytest.raises(RuntimeError_, match="docker runtime requires"):
-        launch(descriptor, {"python": "p", "script": "s", "msg": "m"}, runtime="docker", cwd=tmp_path)
+        launch(
+            descriptor,
+            {"python": "p", "script": "s", "msg": "m"},
+            runtime="docker",
+            cwd=tmp_path,
+        )
+
+
+def test_runtime_args_pass_through_to_docker(tmp_path):
+    """--runtime-args content is inserted before the image ref, after our flags."""
+    captured: dict = {}
+    with patch(
+        "boutiques.execution.runtime.docker.run_subprocess",
+        side_effect=_fake_run_subprocess(captured),
+    ):
+        launch(
+            _docker_descriptor(),
+            {"x": "hi"},
+            runtime="docker",
+            cwd=tmp_path,
+            runtime_args=["--gpus", "all", "--network", "host"],
+        )
+
+    argv = captured["argv"]
+    # All four runtime-arg tokens appear and are before the image ref.
+    image_idx = argv.index("example/tool")
+    for token in ("--gpus", "all", "--network", "host"):
+        idx = argv.index(token)
+        assert idx < image_idx, f"{token!r} should precede image ref"
 
 
 def test_singularity_runtime_uses_docker_uri(tmp_path):
-    descriptor = _docker_descriptor()
-
-    captured = {}
-
-    def fake_run(argv, **kwargs):
-        captured["argv"] = argv
-
-        class _Result:
-            returncode = 0
-            stdout = ""
-            stderr = ""
-
-        return _Result()
-
+    captured: dict = {}
     with patch(
-        "boutiques.execution.runtime.singularity.subprocess.run", side_effect=fake_run
-    ), patch("boutiques.execution.runtime.singularity.shutil.which", return_value=None):
-        launch(descriptor, {"x": "hi"}, runtime="singularity", cwd=tmp_path)
+        "boutiques.execution.runtime.singularity.run_subprocess",
+        side_effect=_fake_run_subprocess(captured),
+    ), patch(
+        "boutiques.execution.runtime.singularity.shutil.which",
+        return_value=None,
+    ):
+        launch(_docker_descriptor(), {"x": "hi"}, runtime="singularity", cwd=tmp_path)
 
     argv = captured["argv"]
     assert argv[0] == "singularity"
@@ -197,11 +193,15 @@ def test_singularity_runtime_uses_docker_uri(tmp_path):
 def test_unknown_runtime_raises():
     descriptor = _echo_descriptor()
     with pytest.raises(RuntimeError_, match="Unknown runtime"):
-        launch(descriptor, {"python": "p", "script": "s", "msg": "m"}, runtime="podman")
+        launch(
+            descriptor,
+            {"python": "p", "script": "s", "msg": "m"},
+            runtime="podman",
+        )
 
 
 def test_output_paths_resolve_against_cwd(tmp_path):
-    """Path-template substitution + existence check. Skips the subprocess."""
+    """Path-template substitution + existence check (no subprocess)."""
     descriptor = load(
         {
             "schema-version": "0.5",
@@ -213,26 +213,18 @@ def test_output_paths_resolve_against_cwd(tmp_path):
                 {"id": "name", "name": "N", "type": "String", "value-key": "[NAME]"},
             ],
             "output-files": [
-                {
-                    "id": "out",
-                    "name": "Out",
-                    "path-template": "[NAME].txt",
-                }
+                {"id": "out", "name": "Out", "path-template": "[NAME].txt"}
             ],
         }
     )
-    # Create the expected output so the existence check is true
     (tmp_path / "result.txt").write_text("data")
 
-    # Bypass the subprocess to keep this test platform-agnostic.
     from boutiques.execution.outputs import resolve_output_paths
 
     outputs = resolve_output_paths(descriptor, {"name": "result"}, tmp_path)
     assert len(outputs) == 1
-    out = outputs[0]
-    assert out.id == "out"
-    assert out.path == (tmp_path / "result.txt").resolve()
-    assert out.exists
+    assert outputs[0].path == (tmp_path / "result.txt").resolve()
+    assert outputs[0].exists
 
 
 def test_environment_variables_are_passed(tmp_path):
@@ -261,6 +253,7 @@ def test_environment_variables_are_passed(tmp_path):
         },
         runtime="local",
         cwd=tmp_path,
+        stream=False,
     )
     assert result.exit_code == 0
     assert "from_descriptor" in result.stdout

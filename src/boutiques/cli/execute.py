@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shlex
 from pathlib import Path
 
 import typer
@@ -53,6 +54,14 @@ def launch(
         "--cwd",
         help="Working directory for the run (also the container mount point).",
     ),
+    runtime_args: str = typer.Option(
+        "",
+        "--runtime-args",
+        help=(
+            "Extra arguments passed through to the container runtime, "
+            "shlex-split. Example: --runtime-args '--gpus all --network host'."
+        ),
+    ),
 ) -> None:
     """Launch a descriptor with an invocation under the chosen runtime."""
     try:
@@ -61,16 +70,21 @@ def launch(
         typer.echo(str(exc), err=True)
         raise typer.Exit(1) from exc
     inv = json.loads(invocation.read_text())
+    extra_args = shlex.split(runtime_args) if runtime_args else []
     try:
-        result = _launch(parsed, inv, runtime=runtime, cwd=cwd)
+        result = _launch(
+            parsed,
+            inv,
+            runtime=runtime,
+            cwd=cwd,
+            runtime_args=extra_args,
+            stream=True,
+            capture=False,  # output already streamed; don't buffer twice
+        )
     except RuntimeError_ as exc:
         typer.echo(f"Runtime error: {exc}", err=True)
         raise typer.Exit(2) from exc
 
-    if result.stdout:
-        typer.echo(result.stdout, nl=False)
-    if result.stderr:
-        typer.echo(result.stderr, err=True, nl=False)
     typer.echo(
         f"\n[bosh] runtime={result.runtime} "
         f"exit={result.exit_code} "

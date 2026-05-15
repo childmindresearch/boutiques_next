@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import os
-import subprocess
-import time
 from pathlib import Path
 from typing import Optional
 
+from boutiques.execution.runtime._subprocess import run_subprocess
 from boutiques.execution.runtime.base import RunResult
 
 
@@ -17,21 +15,10 @@ def run(
     container_image: Optional[object] = None,  # ignored
     env: dict[str, str],
     cwd: Path,
+    mounts: Optional[list[Path]] = None,  # ignored
+    runtime_args: Optional[list[str]] = None,  # ignored
+    stream: bool = True,
+    capture: bool = True,
 ) -> RunResult:
-    """Run ``argv`` in a subprocess and capture stdout/stderr."""
-    full_env = {**os.environ, **env}
-    start = time.monotonic()
-    completed = subprocess.run(
-        argv,
-        cwd=str(cwd),
-        env=full_env,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    return RunResult(
-        exit_code=completed.returncode,
-        stdout=completed.stdout,
-        stderr=completed.stderr,
-        duration_seconds=time.monotonic() - start,
-    )
+    """Run ``argv`` locally; stream/capture per the flags."""
+    return run_subprocess(argv, env=env, cwd=cwd, stream=stream, capture=capture)

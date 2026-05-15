@@ -40,6 +40,9 @@ def launch(
     *,
     runtime: str = "local",
     cwd: Optional[Path] = None,
+    runtime_args: Optional[list[str]] = None,
+    stream: bool = True,
+    capture: bool = True,
 ) -> LaunchResult:
     """Resolve the invocation and run the tool under the chosen runtime."""
     if runtime not in _RUNTIMES:
@@ -56,6 +59,10 @@ def launch(
         container_image=descriptor.container_image,
         env=env,
         cwd=work_dir,
+        mounts=[work_dir],
+        runtime_args=runtime_args or [],
+        stream=stream,
+        capture=capture,
     )
 
     outputs = resolve_output_paths(descriptor, invocation, work_dir)
