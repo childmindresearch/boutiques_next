@@ -94,22 +94,26 @@ See [Advanced features](advanced_features.md#list-separator).
 
 ## Sub-command issues
 
-### Invocation missing the `id` discriminator
+### Invocation missing the `@type` discriminator
 
-For a `SubCommandUnion` input, the invocation must include `id` so the
-loader can pick the right sub-command's schema:
+For a `SubCommandUnion` input, the invocation must include `@type` so
+the loader can pick the right sub-command's schema:
 
 ```json
-{ "op": { "id": "blur", "sigma": 1.5 } }
+{ "op": { "@type": "blur", "sigma": 1.5 } }
 ```
 
-Without `id`, Pydantic reports the union-discrimination failure.
+Without `@type`, Pydantic reports the union-discrimination failure.
+(The discriminator is named `@type` to match the Styx convention, so
+invocations are portable between this toolkit and Styx-generated
+language bindings.)
 
 ### Duplicate `id` across union candidates
 
-Within a sub-command union, candidate ids are the discriminator. The
-loader rejects descriptors where two candidates share an id with a
-`Sub-command union candidates must have unique ids` error.
+Within a sub-command union, candidate `id`s become the `@type` values
+in invocations. The loader rejects descriptors where two candidates
+share an id with a `Sub-command union candidates must have unique
+ids` error.
 
 ### Sub-command inputs leak the parent value-keys
 

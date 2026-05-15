@@ -411,7 +411,7 @@ def test_requires_inputs_inside_subcommand():
             ],
         }
     )
-    errs = validate_invocation(d, {"op": {"id": "do", "a": True}})
+    errs = validate_invocation(d, {"op": {"@type": "do", "a": True}})
     assert any("requires 'b'" in str(e) for e in errs)
 
 

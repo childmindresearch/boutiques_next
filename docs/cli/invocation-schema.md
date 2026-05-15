@@ -23,7 +23,8 @@ everything `bosh exec simulate` / `launch` enforces structurally:
 - `value-choices` as `enum`.
 - Numeric ranges (`minimum` / `maximum` / `exclusive*`).
 - List bounds (`minItems` / `maxItems`).
-- Sub-command unions as discriminated `oneOf` branches keyed by `id`.
+- Sub-command unions as discriminated `oneOf` branches keyed by `@type`
+  (matches Styx's tagged-union convention).
 
 Cross-input constraints (`requires-inputs`, group rules, `value-requires`,
 …) are enforced at runtime but don't lower to JSON Schema; they belong

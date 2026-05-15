@@ -51,8 +51,9 @@ For each input, the example generator chooses a value in this order:
 List inputs return `min-list-entries` copies of the chosen value (at
 least one).
 
-Sub-command unions pick the first candidate and include its `id` as the
-discriminator.
+Sub-command unions pick the first candidate and tag it with `@type`
+(matches Styx's tagged-union convention; the value is the chosen
+candidate's `id`).
 
 ## Python equivalent
 

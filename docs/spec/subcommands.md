@@ -78,12 +78,13 @@ sub-commands.
 }
 ```
 
-An invocation must pick exactly one option by its `id`:
+An invocation must pick exactly one option by its `id`, tagged via the
+`@type` discriminator field:
 
 ```json
 {
   "algorithm": {
-    "id": "accurate",
+    "@type": "accurate",
     "input": "/data/in.nii",
     "output": "out.nii",
     "precision": 8
@@ -91,13 +92,15 @@ An invocation must pick exactly one option by its `id`:
 }
 ```
 
-The `id` discriminator at the top of the chosen object is required —
-that's how the loader figures out which sub-command's schema to
-validate against.
+The `@type` field at the top of the chosen object is required — that's
+how the loader figures out which sub-command's schema to validate
+against. The convention matches Styx-generated language bindings, so
+invocation dicts are interchangeable between this toolkit and any
+Styx-built consumer.
 
 !!! note "Candidate ids must be unique"
-    Within a sub-command union, the `id` field on each candidate is the
-    discriminator. Duplicate ids make the union ambiguous and are
+    Within a sub-command union, the `id` of each candidate determines
+    its `@type` tag. Duplicate ids make the union ambiguous and are
     rejected at descriptor-load time.
 
 ## Single sub-command (composite)

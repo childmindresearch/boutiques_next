@@ -31,7 +31,7 @@ from __future__ import annotations
 import shlex
 from typing import Any
 
-from boutiques.invocation import invocation_model_for
+from boutiques.invocation import DISCRIMINATOR_KEY, invocation_model_for
 from boutiques.invocation_check import InvocationValidationError, validate_invocation
 from boutiques.loader import AnyDescriptor
 from boutiques.models.v05.inputs import FlagInput
@@ -167,11 +167,11 @@ def _render_scalar_or_empty(inp: Any, value: Any) -> str:
 
 
 def _choose_subcommand(inp: SubCommandUnionInput, value: dict[str, Any]) -> SubCommandType:
-    chosen_id = value.get("id")
+    chosen_id = value.get(DISCRIMINATOR_KEY)
     for candidate in inp.type:
         if candidate.id == chosen_id:
             return candidate
     raise ValueError(
-        f"Invocation for input {inp.id!r} selected sub-command id={chosen_id!r}, "
-        f"but no candidate with that id exists."
+        f"Invocation for input {inp.id!r} selected sub-command "
+        f"{DISCRIMINATOR_KEY}={chosen_id!r}, but no candidate with that id exists."
     )

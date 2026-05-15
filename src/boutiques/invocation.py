@@ -61,6 +61,17 @@ def invocation_schema(descriptor: AnyDescriptor) -> dict[str, Any]:
     return invocation_model_for(descriptor).model_json_schema()
 
 
+#: JSON key that tags each SubCommandUnion branch. Matches Styx's convention
+#: (``@type``) so invocations are interchangeable between this toolkit and
+#: Styx-generated language bindings.
+DISCRIMINATOR_KEY = "@type"
+
+#: Pydantic-safe Python field name backing :data:`DISCRIMINATOR_KEY`. Pydantic
+#: forbids leading-underscore field names and disallows ``@`` in identifiers,
+#: so we use ``type_`` and route the JSON key through an alias.
+_DISCRIMINATOR_PY_NAME = "type_"
+
+
 def _build_model(
     target: AnyDescriptor | SubCommandType,
     inject_id: str | None,
@@ -69,16 +80,21 @@ def _build_model(
 
     if inject_id is not None:
         # Required discriminator for SubCommandUnion members.
-        fields["id"] = (Literal[inject_id], Field(...))
+        fields[_DISCRIMINATOR_PY_NAME] = (
+            Literal[inject_id],
+            Field(..., alias=DISCRIMINATOR_KEY),
+        )
 
     inputs = target.inputs or []
     target_id = getattr(target, "id", None)
     for inp in inputs:
         py_name, py_type, default = _field_spec(inp)
-        if py_name == "id" and inject_id is not None:
+        if inject_id is not None and (
+            py_name == _DISCRIMINATOR_PY_NAME or inp.id == DISCRIMINATOR_KEY
+        ):
             raise InvocationModelError(
-                f"Sub-command {target_id!r} has an input also named 'id', "
-                "which collides with the discriminator field."
+                f"Sub-command {target_id!r} has an input that collides with "
+                f"the {DISCRIMINATOR_KEY!r} discriminator field."
             )
         fields[py_name] = (py_type, default)
 
@@ -105,7 +121,7 @@ def _field_spec(inp: Any) -> tuple[str, Any, Any]:
     elif isinstance(inp, SubCommandUnionInput):
         members = tuple(_build_model(sc, inject_id=sc.id) for sc in inp.type)
         union = reduce(operator.or_, members)
-        py_type = Annotated[union, Field(discriminator="id")]
+        py_type = Annotated[union, Field(discriminator=_DISCRIMINATOR_PY_NAME)]
     else:
         base_type = _python_type_of(inp)
         is_list = bool(getattr(inp, "list_", False))

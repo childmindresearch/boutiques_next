@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from boutiques.invocation import DISCRIMINATOR_KEY
 from boutiques.loader import AnyDescriptor
 from boutiques.models.v05.inputs import FileInput, FlagInput, NumberInput, StringInput
 from boutiques.models.v05_styx.inputs import (
@@ -49,7 +50,7 @@ def _example_value(inp: Any, complete: bool) -> Any:
         return _generate(inp.type, complete=complete)
     if isinstance(inp, SubCommandUnionInput):
         chosen = inp.type[0]
-        return {"id": chosen.id, **_generate(chosen, complete=complete)}
+        return {DISCRIMINATOR_KEY: chosen.id, **_generate(chosen, complete=complete)}
 
     base = _scalar_example(inp)
     if getattr(inp, "list_", False):

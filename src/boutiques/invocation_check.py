@@ -22,7 +22,7 @@ from typing import Any
 from pydantic import ValidationError as PydanticValidationError
 
 from boutiques._errors import ValidationError
-from boutiques.invocation import invocation_model_for
+from boutiques.invocation import DISCRIMINATOR_KEY, invocation_model_for
 from boutiques.loader import AnyDescriptor
 from boutiques.models.v05.inputs import FlagInput
 from boutiques.models.v05_styx.inputs import (
@@ -103,7 +103,9 @@ def _check_scope(
                 prefix=f"{prefix}inputs[{inp.id}].type.",
             )
         elif isinstance(inp, SubCommandUnionInput):
-            chosen_id = child_value.get("id") if isinstance(child_value, dict) else None
+            chosen_id = (
+                child_value.get(DISCRIMINATOR_KEY) if isinstance(child_value, dict) else None
+            )
             chosen = next((sc for sc in inp.type if sc.id == chosen_id), None)
             if chosen is not None:
                 _check_scope(
