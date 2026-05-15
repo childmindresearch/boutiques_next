@@ -4,6 +4,16 @@
 
 # boutiques
 
+> [!NOTE]
+> **This is a proposed next-generation rewrite** of the
+> [classic boutiques](https://github.com/boutiques/boutiques) toolkit,
+> being incubated under `childmindresearch/boutiques_next` while
+> upstream discussion plays out at
+> [boutiques/boutiques#751](https://github.com/boutiques/boutiques/issues/751).
+> It is **not** the canonical Boutiques implementation today — for that,
+> install the upstream `boutiques` package from PyPI. If consensus
+> lands, this repository will merge back into `boutiques/boutiques`.
+
 A Python toolkit and CLI for the
 [Boutiques](https://boutiques.github.io/) descriptor standard.
 Validate descriptors, generate sample invocations, simulate or launch
