@@ -76,9 +76,15 @@ what's still open.
 ### Quality
 - ruff lint + format clean (strict-ish ruleset).
 - mypy strict clean.
-- 104 tests covering load, validate, lint, semantic checks, invocation
-  model, resolution, sub-commands, mounts, outputs, URL loading, shadow
-  names, runtimes, and end-to-end launch.
+- 117 tests covering load, validate, lint, semantic checks, invocation
+  model, resolution, sub-commands, mounts, outputs, stdio outputs, URL
+  loading, shadow names, runtimes, and end-to-end launch.
+- **CI workflow** (`.github/workflows/ci.yml`) runs ruff + mypy +
+  pytest across Python 3.11 and 3.13 on push and PR.
+- **Docs workflow** (`.github/workflows/docs.yml`) generates JSON
+  Schema artifacts via `bosh schema-export`, builds the mkdocs site
+  with `--strict`, and publishes to GitHub Pages on every push to
+  `main`.
 
 ## Intentionally dropped
 
@@ -104,11 +110,8 @@ direction or upstream consensus moved elsewhere:
 ## Open
 
 ### Near-term
-- **CI workflow + GH Pages publish.** GitHub Actions running
-  `ruff check && ruff format --check && mypy && pytest` on push and PR,
-  plus a docs job calling `bosh schema-export -o docs/schema` and
-  `mkdocs gh-deploy` to publish the site.
-- **Pre-commit hooks** for the same checks locally.
+- **Pre-commit hooks** mirroring the CI checks (ruff lint + format,
+  mypy, pytest).
 
 ### Medium-term
 - **Runtime invocation enforcement** for: `value-choices` range checks
