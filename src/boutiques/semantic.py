@@ -12,16 +12,16 @@ Each rule returns ``ValidationError`` instances with a JSON-pointer-like
 
 from __future__ import annotations
 
+import re
 from collections import Counter
-from collections.abc import Iterator
 from typing import Any
 
 from boutiques._errors import ValidationError
+from boutiques._walk import walk_inputs, walk_scopes
 from boutiques.loader import AnyDescriptor
-from boutiques.models.v05_styx.inputs import (
-    SubCommandInput,
-    SubCommandUnionInput,
-)
+from boutiques.models.v05_styx.inputs import SubCommandUnionInput
+
+_VALUE_KEY_RE = re.compile(r"\[([A-Z0-9_]+)\]")
 
 
 def check(descriptor: AnyDescriptor) -> list[ValidationError]:
@@ -29,53 +29,23 @@ def check(descriptor: AnyDescriptor) -> list[ValidationError]:
     errors: list[ValidationError] = []
 
     # Per-scope (top-level descriptor + each sub-command body)
-    for scope_path, scope in _walk_scopes(descriptor):
+    for scope_path, scope in walk_scopes(descriptor):
         errors.extend(_check_unique_input_ids(scope, scope_path))
         errors.extend(_check_unique_value_keys(scope, scope_path))
         errors.extend(_check_value_keys_in_command_line(scope, scope_path))
+        errors.extend(_check_unique_output_ids(scope, scope_path))
+        errors.extend(_check_unique_output_path_templates(scope, scope_path))
+        errors.extend(_check_orphan_command_line_tokens(scope, scope_path))
 
     # Per-input (recursive into sub-commands)
-    for path, inp in _walk_inputs(descriptor, prefix="inputs"):
+    for path, inp in walk_inputs(descriptor):
         errors.extend(_check_input_dependencies(inp, path))
 
     # Descriptor-wide
     errors.extend(_check_groups(descriptor))
-    errors.extend(_check_outputs(descriptor))
     errors.extend(_check_subcommand_union_ids(descriptor))
 
     return errors
-
-
-# ---------------------------------------------------------------------------
-# Walking helpers
-# ---------------------------------------------------------------------------
-
-
-def _walk_scopes(descriptor: AnyDescriptor) -> Iterator[tuple[str, Any]]:
-    """Yield ``(path, scope)`` for the descriptor and each sub-command body.
-
-    A "scope" is anything with a ``command_line`` and ``inputs`` — i.e.
-    the top-level descriptor and every ``SubCommandType``.
-    """
-    yield "", descriptor
-    for path, inp in _walk_inputs(descriptor, prefix="inputs"):
-        if isinstance(inp, SubCommandInput):
-            yield f"{path}.type", inp.type
-        elif isinstance(inp, SubCommandUnionInput):
-            for i, sc in enumerate(inp.type):
-                yield f"{path}.type[{i}]", sc
-
-
-def _walk_inputs(scope: Any, prefix: str) -> Iterator[tuple[str, Any]]:
-    """Yield ``(path, input)`` for the scope and recursively for sub-commands."""
-    for i, inp in enumerate(scope.inputs or []):
-        path = f"{prefix}[{i}]"
-        yield path, inp
-        if isinstance(inp, SubCommandInput):
-            yield from _walk_inputs(inp.type, prefix=f"{path}.type.inputs")
-        elif isinstance(inp, SubCommandUnionInput):
-            for j, sc in enumerate(inp.type):
-                yield from _walk_inputs(sc, prefix=f"{path}.type[{j}].inputs")
 
 
 # ---------------------------------------------------------------------------
@@ -129,6 +99,70 @@ def _check_value_keys_in_command_line(scope: Any, scope_path: str) -> list[Valid
                 )
             )
     return errors
+
+
+def _check_unique_output_ids(scope: Any, scope_path: str) -> list[ValidationError]:
+    """Output ids must be unique within a scope."""
+    output_files = getattr(scope, "output_files", None)
+    if not output_files:
+        return []
+    counts = Counter(o.id for o in output_files)
+    prefix = f"{scope_path}." if scope_path else ""
+    return [
+        ValidationError(
+            location=f"{prefix}output-files",
+            message=f"Duplicate output id {id_!r} ({n} occurrences).",
+        )
+        for id_, n in counts.items()
+        if n > 1
+    ]
+
+
+def _check_unique_output_path_templates(scope: Any, scope_path: str) -> list[ValidationError]:
+    """No two outputs in a scope may declare the same literal ``path-template``."""
+    output_files = getattr(scope, "output_files", None)
+    if not output_files:
+        return []
+    counts: Counter[str] = Counter()
+    for output in output_files:
+        if output.path_template:
+            counts[output.path_template] += 1
+    prefix = f"{scope_path}." if scope_path else ""
+    return [
+        ValidationError(
+            location=f"{prefix}output-files",
+            message=f"Duplicate path-template {pt!r} ({n} occurrences).",
+        )
+        for pt, n in counts.items()
+        if n > 1
+    ]
+
+
+def _check_orphan_command_line_tokens(scope: Any, scope_path: str) -> list[ValidationError]:
+    """``[UPPER_CASE]`` tokens in a scope's command-line must have a matching value-key.
+
+    Orphan tokens stay literally in the resolved command, which is almost
+    always a descriptor bug. We only match the conventional ``[UPPER_CASE]``
+    form so descriptors with non-standard value-keys (lowercase, mixed, etc.)
+    aren't false-flagged.
+    """
+    command_line = getattr(scope, "command_line", None) or ""
+    tokens_in_cli = set(_VALUE_KEY_RE.findall(command_line))
+    if not tokens_in_cli:
+        return []
+    declared = {
+        getattr(inp, "value_key", None) for inp in (scope.inputs or [])
+    }
+    declared.discard(None)
+    orphans = sorted(t for t in tokens_in_cli if f"[{t}]" not in declared)
+    prefix = f"{scope_path}." if scope_path else ""
+    return [
+        ValidationError(
+            location=f"{prefix}command-line",
+            message=f"Command-line contains token [{t}] with no matching input value-key.",
+        )
+        for t in orphans
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -217,25 +251,10 @@ def _check_groups(descriptor: AnyDescriptor) -> list[ValidationError]:
     return errors
 
 
-def _check_outputs(descriptor: AnyDescriptor) -> list[ValidationError]:
-    """Output ids must be unique."""
-    if not descriptor.output_files:
-        return []
-    counts = Counter(o.id for o in descriptor.output_files)
-    return [
-        ValidationError(
-            location="output-files",
-            message=f"Duplicate output id {id_!r} ({n} occurrences).",
-        )
-        for id_, n in counts.items()
-        if n > 1
-    ]
-
-
 def _check_subcommand_union_ids(descriptor: AnyDescriptor) -> list[ValidationError]:
     """Within a SubCommandUnion, candidate ids must be unique (the discriminator)."""
     errors: list[ValidationError] = []
-    for path, inp in _walk_inputs(descriptor, prefix="inputs"):
+    for path, inp in walk_inputs(descriptor):
         if not isinstance(inp, SubCommandUnionInput):
             continue
         counts = Counter(sc.id for sc in inp.type)
