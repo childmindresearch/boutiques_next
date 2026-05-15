@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import typer
+
+from boutiques.execution import simulate as _simulate
+from boutiques.loader import DescriptorLoadError, load
 
 exec_app = typer.Typer(
     name="exec",
@@ -19,7 +23,13 @@ def simulate(
     invocation: Path = typer.Argument(..., exists=True, readable=True),
 ) -> None:
     """Resolve a descriptor + invocation into a command-line without running it."""
-    raise NotImplementedError
+    try:
+        parsed = load(descriptor)
+    except DescriptorLoadError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1) from exc
+    inv = json.loads(invocation.read_text())
+    typer.echo(_simulate(parsed, inv))
 
 
 @exec_app.command("launch")

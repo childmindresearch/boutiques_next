@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import typer
+
+from boutiques.example import generate
+from boutiques.loader import DescriptorLoadError, load
 
 
 def register(app: typer.Typer) -> None:
@@ -18,4 +22,10 @@ def register(app: typer.Typer) -> None:
         ),
     ) -> None:
         """Generate a sample invocation for a descriptor."""
-        raise NotImplementedError
+        try:
+            parsed = load(descriptor)
+        except DescriptorLoadError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+        invocation = generate(parsed, complete=complete)
+        typer.echo(json.dumps(invocation, indent=2))
