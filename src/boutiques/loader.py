@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Any, Union
+from typing import Any
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
@@ -25,7 +25,7 @@ from pydantic import ValidationError
 from boutiques.models.v05 import Descriptor as V05Descriptor
 from boutiques.models.v05_styx import Descriptor as V05StyxDescriptor
 
-AnyDescriptor = Union[V05Descriptor, V05StyxDescriptor]
+AnyDescriptor = V05Descriptor | V05StyxDescriptor
 
 _SCHEMA_MODELS: dict[str, type] = {
     "0.5": V05Descriptor,
@@ -42,7 +42,7 @@ class DescriptorLoadError(Exception):
     """Raised when a descriptor cannot be parsed or its schema-version is unknown."""
 
 
-def load(source: Union[str, Path, dict[str, Any]]) -> AnyDescriptor:
+def load(source: str | Path | dict[str, Any]) -> AnyDescriptor:
     """Load a descriptor from a file path, URL, dict, or JSON string.
 
     The ``schema-version`` field selects the model. Unknown versions raise
@@ -62,7 +62,7 @@ def load(source: Union[str, Path, dict[str, Any]]) -> AnyDescriptor:
         raise DescriptorLoadError(str(exc)) from exc
 
 
-def _read(source: Union[str, Path, dict[str, Any]]) -> dict[str, Any]:
+def _read(source: str | Path | dict[str, Any]) -> dict[str, Any]:
     if isinstance(source, dict):
         return source
     if isinstance(source, Path):
@@ -91,9 +91,7 @@ def _fetch_url(url: str) -> dict[str, Any]:
     try:
         return json.loads(payload)
     except json.JSONDecodeError as exc:
-        raise DescriptorLoadError(
-            f"Response from {url} is not valid JSON: {exc.msg}"
-        ) from exc
+        raise DescriptorLoadError(f"Response from {url} is not valid JSON: {exc.msg}") from exc
 
 
 def _normalize_github_url(url: str) -> str:

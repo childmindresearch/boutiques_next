@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
-from typing import Optional
 
 from boutiques.execution.runtime._subprocess import run_subprocess
 from boutiques.execution.runtime.base import RunResult, RuntimeError_
@@ -14,11 +13,11 @@ from boutiques.models.v05.containers import DockerOrSingularityImage, RootfsImag
 def run(
     argv: list[str],
     *,
-    container_image: Optional[object],
+    container_image: object | None,
     env: dict[str, str],
     cwd: Path,
-    mounts: Optional[list[Path]] = None,
-    runtime_args: Optional[list[str]] = None,
+    mounts: list[Path] | None = None,
+    runtime_args: list[str] | None = None,
     stream: bool = True,
     capture: bool = True,
 ) -> RunResult:

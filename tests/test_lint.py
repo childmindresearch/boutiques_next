@@ -1,7 +1,5 @@
 from pathlib import Path
 
-import pytest
-
 from boutiques.lint import lint
 from boutiques.loader import load
 from boutiques.models.v05_styx import FileInput

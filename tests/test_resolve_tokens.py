@@ -18,17 +18,13 @@ def _descriptor(inputs, command_line="tool [X]"):
 
 
 def test_resolve_returns_token_list():
-    d = _descriptor(
-        [{"id": "x", "name": "X", "type": "String", "value-key": "[X]"}]
-    )
+    d = _descriptor([{"id": "x", "name": "X", "type": "String", "value-key": "[X]"}])
     assert resolve(d, {"x": "hello"}) == ["tool", "hello"]
 
 
 def test_value_with_space_stays_one_token():
     """Old string-resolve would silently split this into two argv entries."""
-    d = _descriptor(
-        [{"id": "x", "name": "X", "type": "String", "value-key": "[X]"}]
-    )
+    d = _descriptor([{"id": "x", "name": "X", "type": "String", "value-key": "[X]"}])
     tokens = resolve(d, {"x": "hello world"})
     assert tokens == ["tool", "hello world"]
     # Display string quotes for shell-safety

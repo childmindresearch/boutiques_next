@@ -21,7 +21,7 @@ from __future__ import annotations
 import ast
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from boutiques.loader import AnyDescriptor
 
@@ -30,7 +30,7 @@ from boutiques.loader import AnyDescriptor
 class ResolvedOutput:
     id: str
     name: str
-    path: Optional[Path]
+    path: Path | None
     exists: bool
 
 
@@ -59,7 +59,7 @@ def _resolve_output(
     descriptor: AnyDescriptor,
     invocation: dict[str, Any],
     cwd: Path,
-) -> Optional[Path]:
+) -> Path | None:
     if output.path_template is not None:
         return _substitute(output.path_template, output, descriptor, invocation, cwd)
     if output.conditional_path_template:
@@ -101,14 +101,15 @@ def _stripped(value: str, extensions: list[str]) -> str:
 # Conditional templates
 # ---------------------------------------------------------------------------
 
+
 def _pick_conditional_template(
     output: Any,
     descriptor: AnyDescriptor,
     invocation: dict[str, Any],
-) -> Optional[str]:
+) -> str | None:
     """Walk the entries; return the first matching path-template string."""
     value_map = _value_map_for_keys(descriptor, invocation)
-    default: Optional[str] = None
+    default: str | None = None
     for entry in output.conditional_path_template or []:
         for expression, template in entry.items():
             if expression == "default":
@@ -119,9 +120,7 @@ def _pick_conditional_template(
     return default
 
 
-def _value_map_for_keys(
-    descriptor: AnyDescriptor, invocation: dict[str, Any]
-) -> dict[str, Any]:
+def _value_map_for_keys(descriptor: AnyDescriptor, invocation: dict[str, Any]) -> dict[str, Any]:
     """Map each input's value-key string to its invocation value."""
     mapping: dict[str, Any] = {}
     for inp in descriptor.inputs:
@@ -172,4 +171,4 @@ def _eval_safely(expression: str, value_map: dict[str, Any]) -> bool:
                 f"Disallowed expression element {type(node).__name__!r} "
                 f"in conditional-path-template: {expression!r}"
             )
-    return bool(eval(compile(tree, "<conditional-path-template>", "eval")))  # noqa: S307
+    return bool(eval(compile(tree, "<conditional-path-template>", "eval")))

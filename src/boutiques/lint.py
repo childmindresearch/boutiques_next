@@ -8,8 +8,8 @@ validation or execution.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 from boutiques.loader import AnyDescriptor
 from boutiques.models.v05 import Descriptor as V05Descriptor
@@ -25,7 +25,9 @@ class LintIssue:
     level: str = "warning"
 
     def __str__(self) -> str:
-        return f"[{self.level}] {self.field}: {self.message}" if self.field else f"[{self.level}] {self.message}"
+        if self.field:
+            return f"[{self.level}] {self.field}: {self.message}"
+        return f"[{self.level}] {self.message}"
 
 
 def _recommend_tool_version(d: AnyDescriptor) -> list[LintIssue]:

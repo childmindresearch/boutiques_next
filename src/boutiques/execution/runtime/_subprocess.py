@@ -15,7 +15,7 @@ import sys
 import threading
 import time
 from pathlib import Path
-from typing import IO, Optional
+from typing import IO
 
 from boutiques.execution.runtime.base import RunResult
 
@@ -23,8 +23,8 @@ from boutiques.execution.runtime.base import RunResult
 def run_subprocess(
     argv: list[str],
     *,
-    env: Optional[dict[str, str]] = None,
-    cwd: Optional[Path] = None,
+    env: dict[str, str] | None = None,
+    cwd: Path | None = None,
     stream: bool = True,
     capture: bool = True,
 ) -> RunResult:
@@ -75,8 +75,8 @@ def run_subprocess(
 
 def _drain(
     pipe: IO[str],
-    echo_to: Optional[IO[str]],
-    buffer: Optional[list[str]],
+    echo_to: IO[str] | None,
+    buffer: list[str] | None,
 ) -> None:
     try:
         for line in iter(pipe.readline, ""):

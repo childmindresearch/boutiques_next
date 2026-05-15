@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -174,12 +173,15 @@ def test_runtime_args_pass_through_to_docker(tmp_path):
 
 def test_singularity_runtime_uses_docker_uri(tmp_path):
     captured: dict = {}
-    with patch(
-        "boutiques.execution.runtime.singularity.run_subprocess",
-        side_effect=_fake_run_subprocess(captured),
-    ), patch(
-        "boutiques.execution.runtime.singularity.shutil.which",
-        return_value=None,
+    with (
+        patch(
+            "boutiques.execution.runtime.singularity.run_subprocess",
+            side_effect=_fake_run_subprocess(captured),
+        ),
+        patch(
+            "boutiques.execution.runtime.singularity.shutil.which",
+            return_value=None,
+        ),
     ):
         launch(_docker_descriptor(), {"x": "hi"}, runtime="singularity", cwd=tmp_path)
 
@@ -212,9 +214,7 @@ def test_output_paths_resolve_against_cwd(tmp_path):
             "inputs": [
                 {"id": "name", "name": "N", "type": "String", "value-key": "[NAME]"},
             ],
-            "output-files": [
-                {"id": "out", "name": "Out", "path-template": "[NAME].txt"}
-            ],
+            "output-files": [{"id": "out", "name": "Out", "path-template": "[NAME].txt"}],
         }
     )
     (tmp_path / "result.txt").write_text("data")
@@ -240,9 +240,7 @@ def test_environment_variables_are_passed(tmp_path):
                 {"id": "python", "name": "P", "type": "String", "value-key": "[PYTHON]"},
                 {"id": "script", "name": "S", "type": "String", "value-key": "[SCRIPT]"},
             ],
-            "environment-variables": [
-                {"name": "BOUTIQUES_TEST_VAR", "value": "from_descriptor"}
-            ],
+            "environment-variables": [{"name": "BOUTIQUES_TEST_VAR", "value": "from_descriptor"}],
         }
     )
     result = launch(

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -13,7 +13,7 @@ class _OutputAssertion(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
     id: IdStr = Field(description="ID referring to an output-file.")
-    md5_reference: Optional[NonEmptyStr] = Field(
+    md5_reference: NonEmptyStr | None = Field(
         alias="md5-reference",
         default=None,
         description="MD5 checksum to match against the produced output.",
@@ -28,19 +28,19 @@ class TestAssertions(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
-    exit_code: Optional[int] = Field(
+    exit_code: int | None = Field(
         alias="exit-code",
         default=None,
         description="Expected exit code.",
     )
-    output_files: Optional[list[_OutputAssertion]] = Field(
+    output_files: list[_OutputAssertion] | None = Field(
         alias="output-files",
         default=None,
         min_length=1,
     )
 
     @model_validator(mode="after")
-    def _at_least_one(self) -> "TestAssertions":
+    def _at_least_one(self) -> TestAssertions:
         if self.exit_code is None and self.output_files is None:
             raise ValueError(
                 "Test assertions must specify at least one of 'exit-code' or 'output-files'."

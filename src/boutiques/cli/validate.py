@@ -22,10 +22,6 @@ def register(app: typer.Typer) -> None:
 
         assert result.descriptor is not None
         version = result.descriptor.tool_version or "?"
-        typer.echo(
-            f"OK: {result.descriptor.name} "
-            f"v{version} "
-            f"({result.descriptor.schema_version})"
-        )
+        typer.echo(f"OK: {result.descriptor.name} v{version} ({result.descriptor.schema_version})")
         for warning in result.warnings:
             typer.echo(str(warning), err=True)

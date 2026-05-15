@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -12,29 +10,29 @@ class SuggestedResources(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
-    cpu_cores: Optional[int] = Field(
+    cpu_cores: int | None = Field(
         alias="cpu-cores",
         default=None,
         ge=1,
         description="Requested number of CPU cores.",
     )
-    ram: Optional[float] = Field(
+    ram: float | None = Field(
         default=None,
         ge=0,
         description="Requested GB of RAM.",
     )
-    disk_space: Optional[float] = Field(
+    disk_space: float | None = Field(
         alias="disk-space",
         default=None,
         ge=0,
         description="Requested GB of storage.",
     )
-    nodes: Optional[int] = Field(
+    nodes: int | None = Field(
         default=None,
         ge=1,
         description="Requested number of nodes to spread the application across.",
     )
-    walltime_estimate: Optional[float] = Field(
+    walltime_estimate: float | None = Field(
         alias="walltime-estimate",
         default=None,
         ge=0,

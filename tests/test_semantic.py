@@ -193,9 +193,7 @@ def test_value_key_not_in_command_line_flagged():
 def test_group_member_must_reference_existing_input():
     d = _make(
         **{
-            "groups": [
-                {"id": "g", "name": "G", "members": ["x", "does_not_exist"]}
-            ],
+            "groups": [{"id": "g", "name": "G", "members": ["x", "does_not_exist"]}],
         }
     )
     errors = check(d)

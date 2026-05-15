@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from boutiques.execution.mounts import collect_file_mounts
 from boutiques.execution.outputs import ResolvedOutput, resolve_output_paths
@@ -40,16 +40,14 @@ def launch(
     invocation: dict[str, Any],
     *,
     runtime: str = "local",
-    cwd: Optional[Path] = None,
-    runtime_args: Optional[list[str]] = None,
+    cwd: Path | None = None,
+    runtime_args: list[str] | None = None,
     stream: bool = True,
     capture: bool = True,
 ) -> LaunchResult:
     """Resolve the invocation and run the tool under the chosen runtime."""
     if runtime not in _RUNTIMES:
-        raise RuntimeError_(
-            f"Unknown runtime {runtime!r}. Known: {', '.join(sorted(_RUNTIMES))}."
-        )
+        raise RuntimeError_(f"Unknown runtime {runtime!r}. Known: {', '.join(sorted(_RUNTIMES))}.")
     argv = resolve(descriptor, invocation)
     env = _env_for(descriptor)
     work_dir = (cwd or Path.cwd()).resolve()

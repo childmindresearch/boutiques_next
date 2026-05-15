@@ -51,10 +51,16 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "ANN", "RUF"]
-ignore = ["ANN101", "ANN102"]
+# ANN401 -- Any in helpers walking heterogeneous Pydantic inputs is unavoidable.
+# ANN204 -- Pydantic models don't need __init__ annotations.
+ignore = ["ANN401", "ANN204"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["ANN"]
+# Tests can be loose about annotations and line length.
+"tests/**/*.py" = ["ANN", "E501"]
+# Typer's idiomatic CLI parameter declaration uses function calls in argument defaults
+# (typer.Argument / typer.Option). B008 doesn't apply here.
+"src/boutiques/cli/**/*.py" = ["B008"]
 
 [tool.mypy]
 python_version = "3.11"

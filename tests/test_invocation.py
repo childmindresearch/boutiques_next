@@ -36,9 +36,7 @@ def test_invocation_model_enforces_range():
     # The dynamic model uses float typing; range enforcement is currently informational
     # via the descriptor (added later in cross-field semantic checks). For now, the
     # model accepts the value but a follow-up semantic pass would flag it.
-    parsed = model.model_validate(
-        {"infile": "/in", "maskfile": "out", "fractional_intensity": 0.5}
-    )
+    parsed = model.model_validate({"infile": "/in", "maskfile": "out", "fractional_intensity": 0.5})
     assert parsed.fractional_intensity == 0.5
 
 

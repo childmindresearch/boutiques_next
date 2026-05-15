@@ -8,8 +8,9 @@ are dropped, since the broader mount already covers them.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 from boutiques.loader import AnyDescriptor
 from boutiques.models.v05.inputs import FileInput
@@ -33,7 +34,7 @@ def collect_file_mounts(
     return _dedupe_descendants(raw)
 
 
-def _iter_file_paths(inputs, values: dict[str, Any]) -> Iterator[str]:
+def _iter_file_paths(inputs: list | None, values: dict[str, Any]) -> Iterator[str]:
     for inp in inputs or []:
         value = values.get(inp.id)
         if value is None:
@@ -51,9 +52,7 @@ def _iter_file_paths(inputs, values: dict[str, Any]) -> Iterator[str]:
                 yield from _iter_file_paths(chosen.inputs, value)
 
 
-def _chosen_subcommand(
-    inp: SubCommandUnionInput, value: Any
-) -> SubCommandType | None:
+def _chosen_subcommand(inp: SubCommandUnionInput, value: Any) -> SubCommandType | None:
     if not isinstance(value, dict):
         return None
     chosen_id = value.get("id")

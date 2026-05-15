@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -16,7 +16,7 @@ from boutiques.models.v05.resources import SuggestedResources
 from boutiques.models.v05.tests import TestCase
 from boutiques.models.v05_styx.inputs import Input
 
-TagValue = Union[str, list[str], bool]
+TagValue = str | list[str] | bool
 
 
 class Descriptor(BaseModel):
@@ -37,49 +37,39 @@ class Descriptor(BaseModel):
 
     # Recommended (lint warns when absent) but not required by v0.5+styx, since
     # niwrap-style descriptors carry version metadata in sidecar packaging.
-    tool_version: Optional[NonEmptyStr] = Field(
+    tool_version: NonEmptyStr | None = Field(
         alias="tool-version", default=None, description="Tool version."
     )
 
     # Optional metadata
-    author: Optional[NonEmptyStr] = Field(default=None)
-    url: Optional[HttpUrlStr] = Field(default=None)
-    descriptor_url: Optional[HttpUrlStr] = Field(alias="descriptor-url", default=None)
-    doi: Optional[NonEmptyStr] = Field(default=None)
-    tool_doi: Optional[NonEmptyStr] = Field(alias="tool-doi", default=None)
-    deprecated_by_doi: Optional[Union[NonEmptyStr, bool]] = Field(
-        alias="deprecated-by-doi", default=None
-    )
-    online_platform_urls: Optional[list[HttpUrlStr]] = Field(
+    author: NonEmptyStr | None = Field(default=None)
+    url: HttpUrlStr | None = Field(default=None)
+    descriptor_url: HttpUrlStr | None = Field(alias="descriptor-url", default=None)
+    doi: NonEmptyStr | None = Field(default=None)
+    tool_doi: NonEmptyStr | None = Field(alias="tool-doi", default=None)
+    deprecated_by_doi: NonEmptyStr | bool | None = Field(alias="deprecated-by-doi", default=None)
+    online_platform_urls: list[HttpUrlStr] | None = Field(
         alias="online-platform-urls", default=None
     )
-    shell: Optional[NonEmptyStr] = Field(default=None)
+    shell: NonEmptyStr | None = Field(default=None)
 
     # Optional execution
-    container_image: Optional[ContainerImage] = Field(
-        alias="container-image", default=None
-    )
-    environment_variables: Optional[list[EnvironmentVariable]] = Field(
+    container_image: ContainerImage | None = Field(alias="container-image", default=None)
+    environment_variables: list[EnvironmentVariable] | None = Field(
         alias="environment-variables", default=None, min_length=1
     )
-    groups: Optional[list[Group]] = Field(default=None, min_length=1)
-    output_files: Optional[list[Output]] = Field(
-        alias="output-files", default=None, min_length=1
-    )
-    suggested_resources: Optional[SuggestedResources] = Field(
+    groups: list[Group] | None = Field(default=None, min_length=1)
+    output_files: list[Output] | None = Field(alias="output-files", default=None, min_length=1)
+    suggested_resources: SuggestedResources | None = Field(
         alias="suggested-resources", default=None
     )
-    error_codes: Optional[list[ErrorCode]] = Field(
-        alias="error-codes", default=None, min_length=1
-    )
+    error_codes: list[ErrorCode] | None = Field(alias="error-codes", default=None, min_length=1)
 
     # Optional auxiliary
-    tests: Optional[list[TestCase]] = Field(default=None, min_length=1)
-    tags: Optional[dict[str, TagValue]] = Field(default=None)
-    invocation_schema: Optional[dict[str, Any]] = Field(
-        alias="invocation-schema", default=None
-    )
-    custom: Optional[dict[str, Any]] = Field(default=None)
+    tests: list[TestCase] | None = Field(default=None, min_length=1)
+    tags: dict[str, TagValue] | None = Field(default=None)
+    invocation_schema: dict[str, Any] | None = Field(alias="invocation-schema", default=None)
+    custom: dict[str, Any] | None = Field(default=None)
 
 
 Descriptor.model_rebuild()

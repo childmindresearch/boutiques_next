@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Literal, Optional, Union
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -12,12 +12,12 @@ from boutiques.models.common import HttpUrlStr, NonEmptyStr
 class _BaseContainerImage(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
-    working_directory: Optional[NonEmptyStr] = Field(
+    working_directory: NonEmptyStr | None = Field(
         alias="working-directory",
         default=None,
         description="Location from which the task must be launched inside the container.",
     )
-    container_hash: Optional[NonEmptyStr] = Field(
+    container_hash: NonEmptyStr | None = Field(
         alias="container-hash",
         default=None,
         description="Hash for the given container.",
@@ -29,15 +29,15 @@ class DockerOrSingularityImage(_BaseContainerImage):
 
     type: Literal["docker", "singularity"] = Field(description="Container runtime.")
     image: NonEmptyStr = Field(description="Image name. Example: ``bids/mriqc``.")
-    entrypoint: Optional[bool] = Field(
+    entrypoint: bool | None = Field(
         default=None,
         description="True if the container defines an entrypoint.",
     )
-    index: Optional[NonEmptyStr] = Field(
+    index: NonEmptyStr | None = Field(
         default=None,
         description="Index where the image is available. Example: ``docker.io``.",
     )
-    container_opts: Optional[list[str]] = Field(
+    container_opts: list[str] | None = Field(
         alias="container-opts",
         default=None,
         description="Container-level arguments. Example: ``--privileged``.",
@@ -52,6 +52,6 @@ class RootfsImage(_BaseContainerImage):
 
 
 ContainerImage = Annotated[
-    Union[DockerOrSingularityImage, RootfsImage],
+    DockerOrSingularityImage | RootfsImage,
     Field(discriminator="type"),
 ]

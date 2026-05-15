@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from unittest.mock import patch
 
 from boutiques.execution import launch
@@ -84,9 +83,7 @@ def test_collect_file_mounts_handles_list_inputs():
             ],
         }
     )
-    mounts = collect_file_mounts(
-        descriptor, {"vols": ["/a/x.nii", "/b/y.nii", "/a/sub/z.nii"]}
-    )
+    mounts = collect_file_mounts(descriptor, {"vols": ["/a/x.nii", "/b/y.nii", "/a/sub/z.nii"]})
     parents = {p.name for p in mounts}
     assert "a" in parents
     assert "b" in parents
@@ -124,9 +121,7 @@ def test_collect_file_mounts_recurses_into_subcommand_union():
             ],
         }
     )
-    mounts = collect_file_mounts(
-        descriptor, {"op": {"id": "blur", "in": "/nested/file.nii"}}
-    )
+    mounts = collect_file_mounts(descriptor, {"op": {"id": "blur", "in": "/nested/file.nii"}})
     assert any(p.name == "nested" for p in mounts)
 
 

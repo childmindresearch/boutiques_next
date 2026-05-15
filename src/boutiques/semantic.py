@@ -14,7 +14,8 @@ from __future__ import annotations
 
 import re
 from collections import Counter
-from typing import Any, Iterable, Iterator
+from collections.abc import Iterable, Iterator
+from typing import Any
 
 from boutiques._errors import ValidationError
 from boutiques.loader import AnyDescriptor
@@ -51,6 +52,7 @@ def check(descriptor: AnyDescriptor) -> list[ValidationError]:
 # Walking helpers
 # ---------------------------------------------------------------------------
 
+
 def _walk_scopes(descriptor: AnyDescriptor) -> Iterator[tuple[str, Any]]:
     """Yield ``(path, scope)`` for the descriptor and each sub-command body.
 
@@ -66,9 +68,7 @@ def _walk_scopes(descriptor: AnyDescriptor) -> Iterator[tuple[str, Any]]:
                 yield f"{path}.type[{i}]", sc
 
 
-def _walk_inputs(
-    scope: Any, prefix: str
-) -> Iterator[tuple[str, Any]]:
+def _walk_inputs(scope: Any, prefix: str) -> Iterator[tuple[str, Any]]:
     """Yield ``(path, input)`` for the scope and recursively for sub-commands."""
     for i, inp in enumerate(scope.inputs or []):
         path = f"{prefix}[{i}]"
@@ -84,6 +84,7 @@ def _walk_inputs(
 # Per-scope checks
 # ---------------------------------------------------------------------------
 
+
 def _check_unique_input_ids(scope: Any, scope_path: str) -> list[ValidationError]:
     counts = Counter(inp.id for inp in (scope.inputs or []))
     location_prefix = f"{scope_path}." if scope_path else ""
@@ -98,11 +99,7 @@ def _check_unique_input_ids(scope: Any, scope_path: str) -> list[ValidationError
 
 
 def _check_unique_value_keys(scope: Any, scope_path: str) -> list[ValidationError]:
-    keys = [
-        inp.value_key
-        for inp in (scope.inputs or [])
-        if getattr(inp, "value_key", None)
-    ]
+    keys = [inp.value_key for inp in (scope.inputs or []) if getattr(inp, "value_key", None)]
     counts = Counter(keys)
     location_prefix = f"{scope_path}." if scope_path else ""
     return [
@@ -115,9 +112,7 @@ def _check_unique_value_keys(scope: Any, scope_path: str) -> list[ValidationErro
     ]
 
 
-def _check_value_keys_in_command_line(
-    scope: Any, scope_path: str
-) -> list[ValidationError]:
+def _check_value_keys_in_command_line(scope: Any, scope_path: str) -> list[ValidationError]:
     """Every input's value-key must appear in the scope's command-line."""
     command_line = scope.command_line
     errors: list[ValidationError] = []
@@ -131,8 +126,7 @@ def _check_value_keys_in_command_line(
                 ValidationError(
                     location=f"{location_prefix}inputs[{i}].value-key",
                     message=(
-                        f"value-key {vk!r} does not appear in the command-line "
-                        f"{command_line!r}."
+                        f"value-key {vk!r} does not appear in the command-line {command_line!r}."
                     ),
                 )
             )
@@ -142,6 +136,7 @@ def _check_value_keys_in_command_line(
 # ---------------------------------------------------------------------------
 # Per-input dependency checks
 # ---------------------------------------------------------------------------
+
 
 def _check_input_dependencies(inp: Any, path: str) -> list[ValidationError]:
     """The dependency block from the v0.5 JSON Schema, plus min<=max bounds."""
@@ -186,8 +181,7 @@ def _check_input_dependencies(inp: Any, path: str) -> list[ValidationError]:
             ValidationError(
                 location=f"{path}.min-list-entries",
                 message=(
-                    f"min-list-entries ({min_list}) must be <= "
-                    f"max-list-entries ({max_list})."
+                    f"min-list-entries ({min_list}) must be <= max-list-entries ({max_list})."
                 ),
             )
         )
@@ -206,6 +200,7 @@ def _alias(python_attr: str) -> str:
 # Descriptor-wide checks
 # ---------------------------------------------------------------------------
 
+
 def _check_groups(descriptor: AnyDescriptor) -> list[ValidationError]:
     """Every group member must reference an existing top-level input id."""
     if not descriptor.groups:
@@ -218,10 +213,7 @@ def _check_groups(descriptor: AnyDescriptor) -> list[ValidationError]:
                 errors.append(
                     ValidationError(
                         location=f"groups[{gi}].members[{mi}]",
-                        message=(
-                            f"Group {group.id!r} references unknown input id "
-                            f"{member!r}."
-                        ),
+                        message=(f"Group {group.id!r} references unknown input id {member!r}."),
                     )
                 )
     return errors

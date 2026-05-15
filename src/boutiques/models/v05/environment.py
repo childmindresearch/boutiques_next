@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from pydantic import BaseModel, ConfigDict, Field
 
 from boutiques.models.common import EnvVarName
@@ -16,6 +14,6 @@ class EnvironmentVariable(BaseModel):
 
     name: EnvVarName = Field(description="Environment variable name.")
     value: str = Field(description="Value of the environment variable.")
-    description: Optional[str] = Field(
+    description: str | None = Field(
         default=None, description="Description of the environment variable."
     )

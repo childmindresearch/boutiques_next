@@ -29,9 +29,7 @@ def test_invocation_model_rejects_unknown_subcommand_id():
     descriptor = load(SUBCMD)
     model = invocation_model_for(descriptor)
     with pytest.raises(ValidationError):
-        model.model_validate(
-            {"op": {"id": "nonexistent", "amount": 0.5}, "volumes": ["/v.nii"]}
-        )
+        model.model_validate({"op": {"id": "nonexistent", "amount": 0.5}, "volumes": ["/v.nii"]})
 
 
 def test_simulate_resolves_chosen_subcommand():

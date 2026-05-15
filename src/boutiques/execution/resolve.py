@@ -29,7 +29,7 @@ list directly so we can call ``subprocess.run(..., shell=False)``.
 from __future__ import annotations
 
 import shlex
-from typing import Any, Union
+from typing import Any
 
 from boutiques.invocation import invocation_model_for
 from boutiques.loader import AnyDescriptor
@@ -51,7 +51,7 @@ def resolve(descriptor: AnyDescriptor, invocation: dict[str, Any]) -> list[str]:
 
 def _resolve_template(
     template: str,
-    inputs: Union[list, None],
+    inputs: list | None,
     values: dict[str, Any],
 ) -> list[str]:
     template_tokens = shlex.split(template)

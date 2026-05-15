@@ -6,6 +6,8 @@ from boutiques.loader import DescriptorLoadError, load
 from boutiques.models.v05 import Descriptor as V05Descriptor
 from boutiques.models.v05_styx import (
     Descriptor as V05StyxDescriptor,
+)
+from boutiques.models.v05_styx import (
     SubCommandUnionInput,
 )
 

@@ -13,7 +13,9 @@ checking with structured Pydantic error messages.
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal, Union
+import operator
+from functools import reduce
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
@@ -36,7 +38,7 @@ class InvocationModelError(Exception):
 
 
 def invocation_model_for(
-    descriptor_or_subcommand: Union[AnyDescriptor, SubCommandType],
+    descriptor_or_subcommand: AnyDescriptor | SubCommandType,
 ) -> type[BaseModel]:
     """Return a Pydantic model that validates invocations for the given target.
 
@@ -48,8 +50,8 @@ def invocation_model_for(
 
 
 def _build_model(
-    target: Union[AnyDescriptor, SubCommandType],
-    inject_id: Union[str, None],
+    target: AnyDescriptor | SubCommandType,
+    inject_id: str | None,
 ) -> type[BaseModel]:
     fields: dict[str, tuple[Any, Any]] = {}
 
@@ -83,14 +85,15 @@ def _field_spec(inp: Any) -> tuple[str, Any, Any]:
         py_type = nested
     elif isinstance(inp, SubCommandUnionInput):
         members = tuple(_build_model(sc, inject_id=sc.id) for sc in inp.type)
-        py_type = Annotated[Union[members], Field(discriminator="id")]
+        union = reduce(operator.or_, members)
+        py_type = Annotated[union, Field(discriminator="id")]
     else:
         base_type = _python_type_of(inp)
         is_list = bool(getattr(inp, "list_", False))
         py_type = list[base_type] if is_list else base_type  # type: ignore[valid-type]
 
     if inp.optional:
-        py_type = Union[py_type, None]
+        py_type = py_type | None
         default = Field(default=None, alias=alias)
     else:
         default = Field(..., alias=alias)

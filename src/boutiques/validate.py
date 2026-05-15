@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Union
+from typing import Any
 
 from boutiques._errors import ValidationError
 from boutiques.lint import LintIssue, lint
@@ -26,7 +26,7 @@ __all__ = ["ValidationError", "ValidationResult", "validate"]
 class ValidationResult:
     """Outcome of validating a descriptor."""
 
-    descriptor: Union[AnyDescriptor, None] = None
+    descriptor: AnyDescriptor | None = None
     errors: list[ValidationError] = field(default_factory=list)
     warnings: list[LintIssue] = field(default_factory=list)
 
@@ -43,7 +43,7 @@ class ValidationResult:
         return "OK"
 
 
-def validate(source: Union[str, Path, dict[str, Any]]) -> ValidationResult:
+def validate(source: str | Path | dict[str, Any]) -> ValidationResult:
     """Validate a descriptor and return a ``ValidationResult``."""
     try:
         descriptor = load(source)

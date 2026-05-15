@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Union
+from typing import Any
 
 from boutiques.loader import AnyDescriptor
 from boutiques.models.v05.inputs import FileInput, FlagInput, NumberInput, StringInput
@@ -24,7 +24,7 @@ def generate(descriptor: AnyDescriptor, complete: bool = False) -> dict[str, Any
 
 
 def _generate(
-    target: Union[AnyDescriptor, SubCommandType],
+    target: AnyDescriptor | SubCommandType,
     complete: bool,
 ) -> dict[str, Any]:
     invocation: dict[str, Any] = {}

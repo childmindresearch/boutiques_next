@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
 from boutiques.execution.runtime._subprocess import run_subprocess
 from boutiques.execution.runtime.base import RunResult
@@ -12,11 +11,11 @@ from boutiques.execution.runtime.base import RunResult
 def run(
     argv: list[str],
     *,
-    container_image: Optional[object] = None,  # ignored
+    container_image: object | None = None,  # ignored
     env: dict[str, str],
     cwd: Path,
-    mounts: Optional[list[Path]] = None,  # ignored
-    runtime_args: Optional[list[str]] = None,  # ignored
+    mounts: list[Path] | None = None,  # ignored
+    runtime_args: list[str] | None = None,  # ignored
     stream: bool = True,
     capture: bool = True,
 ) -> RunResult:

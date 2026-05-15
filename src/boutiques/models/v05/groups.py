@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from pydantic import BaseModel, ConfigDict, Field
 
 from boutiques.models.common import IdStr, NonEmptyStr
@@ -16,9 +14,7 @@ class Group(BaseModel):
 
     id: IdStr = Field(description="Group identifier.")
     name: NonEmptyStr = Field(description="Human-readable name for the input group.")
-    description: Optional[str] = Field(
-        default=None, description="Description of the input group."
-    )
+    description: str | None = Field(default=None, description="Description of the input group.")
     members: list[IdStr] = Field(
         description="IDs of the inputs belonging to this group.",
         min_length=1,
