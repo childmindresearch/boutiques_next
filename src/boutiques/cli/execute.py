@@ -23,9 +23,7 @@ exec_app = typer.Typer(
 
 @exec_app.command("simulate")
 def simulate(
-    descriptor: str = typer.Argument(
-        ..., help="Path or http(s) URL to a Boutiques descriptor."
-    ),
+    descriptor: str = typer.Argument(..., help="Path or http(s) URL to a Boutiques descriptor."),
     invocation: Path | None = typer.Argument(
         None,
         exists=True,
@@ -66,9 +64,7 @@ def simulate(
 
 @exec_app.command("launch")
 def launch(
-    descriptor: str = typer.Argument(
-        ..., help="Path or http(s) URL to a Boutiques descriptor."
-    ),
+    descriptor: str = typer.Argument(..., help="Path or http(s) URL to a Boutiques descriptor."),
     invocation: Path = typer.Argument(..., exists=True, readable=True),
     runtime: str = typer.Option(
         "local",

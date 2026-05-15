@@ -209,9 +209,7 @@ def test_cli_force_docker_aliases_runtime(tmp_path):
                 "description": "x",
                 "tool-version": "1.0",
                 "command-line": "tool [X]",
-                "inputs": [
-                    {"id": "x", "name": "X", "type": "String", "value-key": "[X]"}
-                ],
+                "inputs": [{"id": "x", "name": "X", "type": "String", "value-key": "[X]"}],
                 "container-image": {"type": "docker", "image": "example/tool"},
             }
         )
@@ -225,9 +223,7 @@ def test_cli_force_docker_aliases_runtime(tmp_path):
         captured["argv"] = argv
         return RunResult(exit_code=0, stdout="", stderr="", duration_seconds=0.0)
 
-    with patch(
-        "boutiques.execution.runtime.docker.run_subprocess", side_effect=fake_run
-    ):
+    with patch("boutiques.execution.runtime.docker.run_subprocess", side_effect=fake_run):
         result = CliRunner().invoke(
             app,
             [
@@ -266,9 +262,7 @@ def test_cli_force_multiple_runtimes_errors(tmp_path):
                 "description": "x",
                 "tool-version": "1.0",
                 "command-line": "tool [X]",
-                "inputs": [
-                    {"id": "x", "name": "X", "type": "String", "value-key": "[X]"}
-                ],
+                "inputs": [{"id": "x", "name": "X", "type": "String", "value-key": "[X]"}],
                 "container-image": {"type": "docker", "image": "example/tool"},
             }
         )
@@ -309,9 +303,7 @@ def test_cli_simulate_accepts_i_flag(tmp_path):
                 "description": "x",
                 "tool-version": "1.0",
                 "command-line": "tool [X]",
-                "inputs": [
-                    {"id": "x", "name": "X", "type": "String", "value-key": "[X]"}
-                ],
+                "inputs": [{"id": "x", "name": "X", "type": "String", "value-key": "[X]"}],
             }
         )
     )
@@ -341,9 +333,7 @@ def test_cli_simulate_both_positional_and_i_errors(tmp_path):
                 "description": "x",
                 "tool-version": "1.0",
                 "command-line": "tool [X]",
-                "inputs": [
-                    {"id": "x", "name": "X", "type": "String", "value-key": "[X]"}
-                ],
+                "inputs": [{"id": "x", "name": "X", "type": "String", "value-key": "[X]"}],
             }
         )
     )
