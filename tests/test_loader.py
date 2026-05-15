@@ -26,6 +26,17 @@ def test_load_from_json_literal():
     assert isinstance(descriptor, V05Descriptor)
 
 
+def test_load_from_long_json_literal_does_not_filesystem_check():
+    """Regression: long JSON strings used to trip OSError ENAMETOOLONG on Linux
+    when ``_read`` tried ``Path(source).exists()`` before parsing.
+    """
+    raw = (FIXTURES / "v05" / "fsl_bet.json").read_text()
+    # Pad to ensure we're well past any OS path-length limit.
+    padded = raw + " " * 5000
+    descriptor = load(padded)
+    assert isinstance(descriptor, V05Descriptor)
+
+
 def test_load_from_dict():
     raw = json.loads((FIXTURES / "v05" / "fsl_bet.json").read_text())
     descriptor = load(raw)

@@ -67,12 +67,22 @@ def _read(source: str | Path | dict[str, Any]) -> dict[str, Any]:
         return source
     if isinstance(source, Path):
         return cast(dict[str, Any], json.loads(source.read_text()))
-    # str: try a path first, then a URL, then a JSON literal.
-    as_path = Path(source)
-    if as_path.exists():
-        return cast(dict[str, Any], json.loads(as_path.read_text()))
+    # str: discriminate by shape first to avoid filesystem-layer errors on
+    # long inputs (Linux raises OSError ENAMETOOLONG when stat'ing a "path"
+    # built from a multi-kilobyte JSON literal).
+    stripped = source.lstrip()
+    if stripped.startswith(("{", "[")):
+        return cast(dict[str, Any], json.loads(source))
     if _looks_like_url(source):
         return _fetch_url(source)
+    try:
+        as_path = Path(source)
+        if as_path.exists():
+            return cast(dict[str, Any], json.loads(as_path.read_text()))
+    except OSError:
+        # Path() was syntactically valid but the OS rejected the lookup
+        # (e.g. component too long). Fall through to JSON-literal parsing.
+        pass
     return cast(dict[str, Any], json.loads(source))
 
 
