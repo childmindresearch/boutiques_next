@@ -46,9 +46,7 @@ def test_library_invocation_schema_subcommand_union_uses_oneof():
 
 
 def test_invocation_schema_cli_prints_to_stdout():
-    result = runner.invoke(
-        app, ["invocation-schema", str(FIXTURES / "v05" / "fsl_bet.json")]
-    )
+    result = runner.invoke(app, ["invocation-schema", str(FIXTURES / "v05" / "fsl_bet.json")])
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
     assert "infile" in payload["properties"]
@@ -76,9 +74,7 @@ def test_invocation_schema_cli_writes_to_file(tmp_path):
 
 def test_invocation_plain_mode_confirms_schema_builds():
     """No flags: confirm the schema can be generated."""
-    result = runner.invoke(
-        app, ["invocation", str(FIXTURES / "v05" / "fsl_bet.json")]
-    )
+    result = runner.invoke(app, ["invocation", str(FIXTURES / "v05" / "fsl_bet.json")])
     assert result.exit_code == 0
     assert "OK" in result.stdout
 
@@ -135,7 +131,5 @@ def test_invocation_write_schema_embeds_into_descriptor(tmp_path):
 
 def test_invocation_write_schema_rejects_url():
     """-w only makes sense for local descriptors; reject http(s) URLs."""
-    result = runner.invoke(
-        app, ["invocation", "https://example.com/x.json", "-w"]
-    )
+    result = runner.invoke(app, ["invocation", "https://example.com/x.json", "-w"])
     assert result.exit_code == 1

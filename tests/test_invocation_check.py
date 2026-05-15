@@ -13,9 +13,7 @@ from boutiques.loader import load
 
 
 def _make(*, command_line="tool [X]", inputs=None, groups=None):
-    inputs = inputs or [
-        {"id": "x", "name": "X", "type": "String", "value-key": "[X]"}
-    ]
+    inputs = inputs or [{"id": "x", "name": "X", "type": "String", "value-key": "[X]"}]
     descriptor = {
         "schema-version": "0.5",
         "name": "t",
@@ -298,9 +296,7 @@ def test_mutually_exclusive_violation():
                 "value-key": "[B]",
             },
         ],
-        groups=[
-            {"id": "g", "name": "G", "members": ["a", "b"], "mutually-exclusive": True}
-        ],
+        groups=[{"id": "g", "name": "G", "members": ["a", "b"], "mutually-exclusive": True}],
     )
     errs = validate_invocation(d, {"a": True, "b": True})
     assert any("mutually-exclusive" in str(e) for e in errs)
@@ -325,9 +321,7 @@ def test_one_is_required_violation():
                 "value-key": "[B]",
             },
         ],
-        groups=[
-            {"id": "g", "name": "G", "members": ["a", "b"], "one-is-required": True}
-        ],
+        groups=[{"id": "g", "name": "G", "members": ["a", "b"], "one-is-required": True}],
     )
     errs = validate_invocation(d, {"a": False, "b": False})
     assert any("at least one active member" in str(e) for e in errs)
@@ -535,9 +529,7 @@ def test_cli_simulate_reports_invocation_error_cleanly(tmp_path):
     inv_path = tmp_path / "inv.json"
     inv_path.write_text('{"n": 2.0}')
 
-    result = CliRunner().invoke(
-        app, ["exec", "simulate", str(descriptor_path), str(inv_path)]
-    )
+    result = CliRunner().invoke(app, ["exec", "simulate", str(descriptor_path), str(inv_path)])
     assert result.exit_code == 1
     combined = (result.stdout or "") + (result.stderr or "")
     assert "Invocation invalid" in combined

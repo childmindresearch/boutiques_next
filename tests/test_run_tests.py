@@ -29,9 +29,7 @@ def _descriptor_with_tests(tmp_path, tests):
                 {"id": "script", "name": "S", "type": "String", "value-key": "[SCRIPT]"},
                 {"id": "name", "name": "N", "type": "String", "value-key": "[NAME]"},
             ],
-            "output-files": [
-                {"id": "out", "name": "Out", "path-template": "[NAME].txt"}
-            ],
+            "output-files": [{"id": "out", "name": "Out", "path-template": "[NAME].txt"}],
             "tests": tests,
         }
     )
@@ -129,14 +127,10 @@ def test_md5_reference_match(tmp_path):
                 "name": "matches_md5",
                 "invocation": {
                     "python": sys.executable,
-                    "script": (
-                        "open('result.txt', 'wb').write(b'deterministic content')"
-                    ),
+                    "script": ("open('result.txt', 'wb').write(b'deterministic content')"),
                     "name": "result",
                 },
-                "assertions": {
-                    "output-files": [{"id": "out", "md5-reference": expected_md5}]
-                },
+                "assertions": {"output-files": [{"id": "out", "md5-reference": expected_md5}]},
             }
         ],
     )
@@ -155,9 +149,7 @@ def test_md5_mismatch_reports_diff(tmp_path):
                     "script": "open('result.txt', 'wb').write(b'actual content')",
                     "name": "result",
                 },
-                "assertions": {
-                    "output-files": [{"id": "out", "md5-reference": "0" * 32}]
-                },
+                "assertions": {"output-files": [{"id": "out", "md5-reference": "0" * 32}]},
             }
         ],
     )
