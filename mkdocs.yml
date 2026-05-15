@@ -34,6 +34,12 @@ nav:
   - Home: index.md
   - Specification:
       - spec/index.md
+      - Basic structure: spec/basic_structure.md
+      - File handling: spec/file_handling.md
+      - Subcommands: spec/subcommands.md
+      - Advanced features: spec/advanced_features.md
+      - Examples: spec/examples.md
+      - Troubleshooting: spec/troubleshooting.md
   - CLI:
       - cli/index.md
       - validate: cli/validate.md

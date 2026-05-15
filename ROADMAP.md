@@ -101,12 +101,16 @@ direction or upstream consensus moved elsewhere:
 ## Open
 
 ### Near-term
-- **Docs site.** Reframe the 7 styxbook spec docs into `docs/` (mkdocs
-  Material), publish to GH Pages alongside the JSON Schema artifacts.
-- **CI workflow.** GitHub Actions running `ruff check && ruff format
-  --check && mypy && pytest` on push and PR, plus `bosh schema-export`
-  feeding the GH Pages publish step.
-- **Pre-commit hooks** for the same.
+- **CI workflow + GH Pages publish.** GitHub Actions running
+  `ruff check && ruff format --check && mypy && pytest` on push and PR,
+  plus a docs job calling `bosh schema-export -o docs/schema` and
+  `mkdocs gh-deploy` to publish the site.
+- **Pre-commit hooks** for the same checks locally.
+- **`stdout-output` / `stderr-output` support.** Spec-defined v0.5+styx
+  fields for capturing tool stdout/stderr as named outputs. Models
+  don't yet accept them — niwrap descriptors using these fields fail
+  to load. Add to `boutiques.models.v05_styx` and surface in
+  `LaunchResult`.
 
 ### Medium-term
 - **Runtime invocation enforcement** for: `value-choices` range checks
