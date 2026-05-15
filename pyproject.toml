@@ -37,7 +37,6 @@ dev = [
 ]
 docs = [
   "mkdocs-material>=9",
-  "mkdocs-typer2>=0.1",
 ]
 
 [tool.pytest.ini_options]

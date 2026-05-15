@@ -21,3 +21,11 @@ uv sync
 uv run bosh --help
 uv run pytest
 ```
+
+## Docs site (local)
+
+```sh
+uv sync --group docs
+uv run bosh schema-export -o docs/schema   # generate JSON Schema artifacts
+uv run mkdocs serve                        # http://127.0.0.1:8000
+```

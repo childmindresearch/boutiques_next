@@ -1,0 +1,66 @@
+site_name: Boutiques
+site_description: A Python toolkit for the Boutiques descriptor standard.
+site_url: https://boutiques.github.io/boutiques/
+repo_url: https://github.com/boutiques/boutiques
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - content.code.copy
+    - search.highlight
+    - search.suggest
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+nav:
+  - Home: index.md
+  - Specification:
+      - spec/index.md
+  - CLI:
+      - cli/index.md
+      - validate: cli/validate.md
+      - example: cli/example.md
+      - exec: cli/exec.md
+      - schema-export: cli/schema-export.md
+      - version: cli/version.md
+  - Python API:
+      - api/index.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+plugins:
+  - search
