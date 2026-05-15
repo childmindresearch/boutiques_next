@@ -144,6 +144,13 @@ direction or upstream consensus moved elsewhere:
 *(All near-term items shipped; see Quality above.)*
 
 ### Medium-term
+- **Migrate docs to Zensical** when feasible. MkDocs 2.0 will remove
+  the plugin system, breaking `mkdocs-material` (and therefore our
+  current setup). [Zensical](https://github.com/zensical/zensical) is
+  the Material team's successor; it's pre-1.0 today and doesn't yet
+  ship an `mkdocstrings` equivalent, so we stay on
+  `mkdocs-material + mkdocstrings` (pinned via `uv.lock`) until either
+  Zensical ships an API-reference story or MkDocs 2.0 actually drops.
 - **Better Pydantic error messages.** Pydantic's default dump is dense;
   pretty-print errors in the CLI (location → message lines, with `rich`
   coloring).

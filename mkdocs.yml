@@ -73,3 +73,19 @@ markdown_extensions:
 
 plugins:
   - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [src]
+          options:
+            show_root_heading: true
+            show_root_full_path: false
+            show_signature_annotations: true
+            separate_signature: true
+            line_length: 80
+            docstring_style: google
+            show_source: false
+            members_order: source
+            merge_init_into_class: true
+            heading_level: 3
