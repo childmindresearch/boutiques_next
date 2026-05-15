@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/logo.svg" alt="Boutiques" width="140">
+</p>
+
 # boutiques
 
 A Python toolkit for the [Boutiques](https://boutiques.github.io/) descriptor
