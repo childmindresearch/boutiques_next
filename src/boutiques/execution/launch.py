@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
 
+from boutiques.execution.mounts import collect_file_mounts
 from boutiques.execution.outputs import ResolvedOutput, resolve_output_paths
 from boutiques.execution.resolve import resolve
 from boutiques.execution.runtime import docker as _docker
@@ -52,6 +53,7 @@ def launch(
     argv = resolve(descriptor, invocation)
     env = _env_for(descriptor)
     work_dir = (cwd or Path.cwd()).resolve()
+    mounts = _plan_mounts(descriptor, invocation, work_dir)
 
     backend = _RUNTIMES[runtime]
     run_result: RunResult = backend.run(
@@ -59,7 +61,7 @@ def launch(
         container_image=descriptor.container_image,
         env=env,
         cwd=work_dir,
-        mounts=[work_dir],
+        mounts=mounts,
         runtime_args=runtime_args or [],
         stream=stream,
         capture=capture,
@@ -75,6 +77,19 @@ def launch(
         duration_seconds=run_result.duration_seconds,
         outputs=outputs,
     )
+
+
+def _plan_mounts(
+    descriptor: AnyDescriptor,
+    invocation: dict[str, Any],
+    work_dir: Path,
+) -> list[Path]:
+    """Combine the working directory with file-input parent dirs, deduped."""
+    raw = {work_dir, *collect_file_mounts(descriptor, invocation)}
+    # Re-dedupe the union so work_dir absorbs any nested file mounts.
+    from boutiques.execution.mounts import _dedupe_descendants
+
+    return _dedupe_descendants(raw)
 
 
 def _env_for(descriptor: AnyDescriptor) -> dict[str, str]:
