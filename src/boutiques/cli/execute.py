@@ -11,6 +11,7 @@ import typer
 from boutiques.execution import launch as _launch
 from boutiques.execution import simulate as _simulate
 from boutiques.execution.runtime.base import RuntimeError_
+from boutiques.invocation_check import InvocationValidationError
 from boutiques.loader import DescriptorLoadError, load
 
 exec_app = typer.Typer(
@@ -32,7 +33,11 @@ def simulate(
         typer.echo(str(exc), err=True)
         raise typer.Exit(1) from exc
     inv = json.loads(invocation.read_text())
-    typer.echo(_simulate(parsed, inv))
+    try:
+        typer.echo(_simulate(parsed, inv))
+    except InvocationValidationError as exc:
+        typer.echo(f"Invocation invalid:\n{exc}", err=True)
+        raise typer.Exit(1) from exc
 
 
 @exec_app.command("launch")
@@ -77,6 +82,9 @@ def launch(
             stream=True,
             capture=False,  # output already streamed; don't buffer twice
         )
+    except InvocationValidationError as exc:
+        typer.echo(f"Invocation invalid:\n{exc}", err=True)
+        raise typer.Exit(1) from exc
     except RuntimeError_ as exc:
         typer.echo(f"Runtime error: {exc}", err=True)
         raise typer.Exit(2) from exc

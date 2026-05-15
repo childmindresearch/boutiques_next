@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from boutiques.execution import launch
+from boutiques.invocation_check import InvocationValidationError
 from boutiques.loader import AnyDescriptor
 
 
@@ -76,13 +77,21 @@ def _run_one(
     cwd: Path | None,
 ) -> TestCaseResult:
     start = time.monotonic()
-    launch_result = launch(
-        descriptor,
-        case.invocation,  # type: ignore[attr-defined]
-        runtime=runtime,
-        cwd=cwd,
-        stream=False,
-    )
+    try:
+        launch_result = launch(
+            descriptor,
+            case.invocation,  # type: ignore[attr-defined]
+            runtime=runtime,
+            cwd=cwd,
+            stream=False,
+        )
+    except InvocationValidationError as exc:
+        return TestCaseResult(
+            name=case.name,  # type: ignore[attr-defined]
+            exit_code=-1,
+            duration_seconds=time.monotonic() - start,
+            failures=[f"invocation invalid: {line}" for line in str(exc).splitlines()],
+        )
     duration = time.monotonic() - start
 
     failures: list[str] = []
