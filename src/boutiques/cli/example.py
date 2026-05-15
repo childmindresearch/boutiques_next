@@ -19,6 +19,7 @@ def register(app: typer.Typer) -> None:
         complete: bool = typer.Option(
             False,
             "--complete",
+            "-c",
             help="Fill in optional inputs as well as required ones.",
         ),
     ) -> None:

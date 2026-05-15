@@ -192,6 +192,173 @@ def test_singularity_runtime_uses_docker_uri(tmp_path):
     assert "docker://example/tool" in argv
 
 
+def test_cli_force_docker_aliases_runtime(tmp_path):
+    """`--force-docker` (classic-bosh compat) selects the docker runtime, -v appends mounts."""
+    import json
+
+    from typer.testing import CliRunner
+
+    from boutiques.cli import app
+
+    descriptor_path = tmp_path / "descriptor.json"
+    descriptor_path.write_text(
+        json.dumps(
+            {
+                "schema-version": "0.5",
+                "name": "t",
+                "description": "x",
+                "tool-version": "1.0",
+                "command-line": "tool [X]",
+                "inputs": [
+                    {"id": "x", "name": "X", "type": "String", "value-key": "[X]"}
+                ],
+                "container-image": {"type": "docker", "image": "example/tool"},
+            }
+        )
+    )
+    inv_path = tmp_path / "inv.json"
+    inv_path.write_text('{"x": "v"}')
+
+    captured: dict = {}
+
+    def fake_run(argv, **kwargs):
+        captured["argv"] = argv
+        return RunResult(exit_code=0, stdout="", stderr="", duration_seconds=0.0)
+
+    with patch(
+        "boutiques.execution.runtime.docker.run_subprocess", side_effect=fake_run
+    ):
+        result = CliRunner().invoke(
+            app,
+            [
+                "exec",
+                "launch",
+                str(descriptor_path),
+                str(inv_path),
+                "--force-docker",
+                "-v",
+                "/a:/b",
+                "-v",
+                "/c:/d",
+            ],
+        )
+
+    assert result.exit_code == 0
+    argv = captured["argv"]
+    assert argv[0] == "docker"
+    for pair in ("/a:/b", "/c:/d"):
+        assert pair in argv
+
+
+def test_cli_force_multiple_runtimes_errors(tmp_path):
+    import json
+
+    from typer.testing import CliRunner
+
+    from boutiques.cli import app
+
+    descriptor_path = tmp_path / "descriptor.json"
+    descriptor_path.write_text(
+        json.dumps(
+            {
+                "schema-version": "0.5",
+                "name": "t",
+                "description": "x",
+                "tool-version": "1.0",
+                "command-line": "tool [X]",
+                "inputs": [
+                    {"id": "x", "name": "X", "type": "String", "value-key": "[X]"}
+                ],
+                "container-image": {"type": "docker", "image": "example/tool"},
+            }
+        )
+    )
+    inv_path = tmp_path / "inv.json"
+    inv_path.write_text('{"x": "v"}')
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "exec",
+            "launch",
+            str(descriptor_path),
+            str(inv_path),
+            "--force-docker",
+            "--force-singularity",
+        ],
+    )
+    assert result.exit_code == 1
+    combined = (result.stdout or "") + (result.stderr or "")
+    assert "at most one" in combined
+
+
+def test_cli_simulate_accepts_i_flag(tmp_path):
+    """Classic-bosh -i should provide the invocation as an alternative to positional."""
+    import json
+
+    from typer.testing import CliRunner
+
+    from boutiques.cli import app
+
+    descriptor_path = tmp_path / "descriptor.json"
+    descriptor_path.write_text(
+        json.dumps(
+            {
+                "schema-version": "0.5",
+                "name": "t",
+                "description": "x",
+                "tool-version": "1.0",
+                "command-line": "tool [X]",
+                "inputs": [
+                    {"id": "x", "name": "X", "type": "String", "value-key": "[X]"}
+                ],
+            }
+        )
+    )
+    inv_path = tmp_path / "inv.json"
+    inv_path.write_text('{"x": "hello"}')
+
+    result = CliRunner().invoke(
+        app, ["exec", "simulate", str(descriptor_path), "-i", str(inv_path)]
+    )
+    assert result.exit_code == 0
+    assert "hello" in result.stdout
+
+
+def test_cli_simulate_both_positional_and_i_errors(tmp_path):
+    import json
+
+    from typer.testing import CliRunner
+
+    from boutiques.cli import app
+
+    descriptor_path = tmp_path / "descriptor.json"
+    descriptor_path.write_text(
+        json.dumps(
+            {
+                "schema-version": "0.5",
+                "name": "t",
+                "description": "x",
+                "tool-version": "1.0",
+                "command-line": "tool [X]",
+                "inputs": [
+                    {"id": "x", "name": "X", "type": "String", "value-key": "[X]"}
+                ],
+            }
+        )
+    )
+    inv_path = tmp_path / "inv.json"
+    inv_path.write_text('{"x": "v"}')
+
+    result = CliRunner().invoke(
+        app,
+        ["exec", "simulate", str(descriptor_path), str(inv_path), "-i", str(inv_path)],
+    )
+    assert result.exit_code == 1
+    combined = (result.stdout or "") + (result.stderr or "")
+    assert "not both" in combined
+
+
 def test_unknown_runtime_raises():
     descriptor = _echo_descriptor()
     with pytest.raises(RuntimeError_, match="Unknown runtime"):
