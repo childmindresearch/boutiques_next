@@ -67,6 +67,11 @@ short-circuiting on the first failure:
 - `bosh test <descriptor>` — runs the test cases declared in the
   descriptor's `tests` field (invocation + `exit-code` / per-output
   `md5-reference` assertions). Exits 0/1.
+- `bosh pprint <descriptor>` — renders a descriptor as a `rich` tree
+  showing name/version, command-line, container, inputs (with type,
+  optionality, flag, default, range, choices, list bounds), outputs,
+  groups, env vars, error codes, tests, and stdio outputs.
+  Sub-command bodies render recursively.
 - `bosh version`.
 - All commands accept paths *or* http(s) URLs; GitHub blob URLs are
   auto-rewritten to raw.
@@ -153,7 +158,6 @@ direction or upstream consensus moved elsewhere:
   the Python API; expose them on the CLI when someone asks.
 - **HTTP fetch cache** for repeated URL loads (currently re-fetches
   every time).
-- **`prettyprint`** equivalent for descriptors — table/tree view.
 - **`deprecate`** equivalent — workflow for marking descriptors
   deprecated.
 - **BIDS-app integration helper** (was `bids.py`) — only if needed.

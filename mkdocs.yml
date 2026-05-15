@@ -47,6 +47,7 @@ nav:
       - example: cli/example.md
       - exec: cli/exec.md
       - test: cli/test.md
+      - pprint: cli/pprint.md
       - schema-export: cli/schema-export.md
       - version: cli/version.md
   - Python API:
