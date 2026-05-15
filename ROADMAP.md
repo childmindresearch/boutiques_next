@@ -85,6 +85,10 @@ what's still open.
   Schema artifacts via `bosh schema-export`, builds the mkdocs site
   with `--strict`, and publishes to GitHub Pages on every push to
   `main`.
+- **Pre-commit hooks** (`.pre-commit-config.yaml`) mirror the CI lint
+  + type checks plus standard hygiene hooks (trailing whitespace, EOF,
+  yaml/toml, merge-conflict, large-file). `uv run pre-commit install`
+  registers them locally.
 
 ## Intentionally dropped
 
@@ -110,8 +114,8 @@ direction or upstream consensus moved elsewhere:
 ## Open
 
 ### Near-term
-- **Pre-commit hooks** mirroring the CI checks (ruff lint + format,
-  mypy, pytest).
+
+*(All near-term items shipped; see Quality above.)*
 
 ### Medium-term
 - **Runtime invocation enforcement** for: `value-choices` range checks
