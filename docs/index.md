@@ -65,7 +65,7 @@ URLs work everywhere paths do — including GitHub blob links, which get
 auto-rewritten to raw:
 
 ```sh
-bosh validate https://github.com/boutiques/boutiques/blob/main/example.json
+bosh validate https://github.com/boutiques/boutiques/blob/master/boutiques/schema/examples/fsl_bet/fsl_bet.json
 ```
 
 ## Status
