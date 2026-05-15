@@ -1,0 +1,32 @@
+# reference repos cloned for design work
+/legacy/
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# tooling caches
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# uv
+.uv/
+
+# editor / OS
+.idea/
+.vscode/
+.claude/
+.DS_Store
+Thumbs.db
+
+# docs build
+site/
