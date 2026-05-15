@@ -122,15 +122,56 @@ def _python_type_of(inp: Any) -> Any:
     raise InvocationModelError(f"Unsupported input variant: {type(inp).__name__}")
 
 
+# Names that exist on ``pydantic.BaseModel`` (or its inherited bases like
+# ``abc.ABCMeta``). Using any of these as a field name triggers a Pydantic
+# UserWarning about shadowing. Real-world niwrap descriptors hit ``register``,
+# ``copy``, ``json``; the rest are common deprecated v1 / object-level
+# attributes that would conflict if a descriptor used them as an input id.
+_SHADOWS_BASEMODEL = frozenset(
+    {
+        "construct",
+        "copy",
+        "dict",
+        "from_orm",
+        "json",
+        "model_computed_fields",
+        "model_config",
+        "model_extra",
+        "model_fields",
+        "model_fields_set",
+        "parse_file",
+        "parse_obj",
+        "parse_raw",
+        "register",
+        "schema",
+        "schema_json",
+        "update_forward_refs",
+        "validate",
+    }
+)
+
+
 def _safe_identifier(input_id: str) -> str:
     """Map an input ID to a Pydantic-safe field name.
 
-    Pydantic forbids field names with leading underscores (reserved for
-    private attributes), and Python identifiers cannot start with a
-    digit. We prefix with ``f_`` when either constraint would be violated.
+    Three constraints handled:
+
+    - Python identifiers cannot start with a digit.
+    - Pydantic forbids field names that start with an underscore (those
+      are reserved for private attributes).
+    - A field name that matches an attribute on ``pydantic.BaseModel``
+      triggers a UserWarning about shadowing. ``register``, ``copy``,
+      and ``json`` all occur in real-world descriptors.
+
+    For the first two we prefix ``f_``; for the shadow case we append
+    a trailing underscore. The descriptor's alias (the original input
+    id) is always preserved on the Pydantic ``Field``, so JSON
+    invocations are untouched.
     """
     if input_id and (input_id[0].isdigit() or input_id.startswith("_")):
         return f"f_{input_id}"
+    if input_id in _SHADOWS_BASEMODEL:
+        return f"{input_id}_"
     return input_id
 
 
