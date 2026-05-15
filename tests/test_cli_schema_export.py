@@ -28,9 +28,7 @@ def test_default_writes_both_versions(tmp_path):
 
 def test_single_version_writes_one_file(tmp_path):
     target = tmp_path / "schema"
-    result = runner.invoke(
-        app, ["schema-export", "--output", str(target), "--version", "0.5"]
-    )
+    result = runner.invoke(app, ["schema-export", "--output", str(target), "--version", "0.5"])
     assert result.exit_code == 0
     assert (target / "0.5" / "descriptor.schema.json").exists()
     assert not (target / "0.5+styx").exists()

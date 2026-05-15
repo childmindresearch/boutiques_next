@@ -150,9 +150,7 @@ def _check_orphan_command_line_tokens(scope: Any, scope_path: str) -> list[Valid
     tokens_in_cli = set(_VALUE_KEY_RE.findall(command_line))
     if not tokens_in_cli:
         return []
-    declared = {
-        getattr(inp, "value_key", None) for inp in (scope.inputs or [])
-    }
+    declared = {getattr(inp, "value_key", None) for inp in (scope.inputs or [])}
     declared.discard(None)
     orphans = sorted(t for t in tokens_in_cli if f"[{t}]" not in declared)
     prefix = f"{scope_path}." if scope_path else ""
@@ -270,5 +268,3 @@ def _check_subcommand_union_ids(descriptor: AnyDescriptor) -> list[ValidationErr
                     )
                 )
     return errors
-
-

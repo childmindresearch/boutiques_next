@@ -20,7 +20,21 @@ Status: early development. The public API is not yet stable.
 uv sync
 uv run bosh --help
 uv run pytest
+uv run pre-commit install   # one-time: register the git hook
 ```
+
+Once `pre-commit install` is run, `ruff` (lint + format) and `mypy`
+will run automatically on every `git commit` against the staged files,
+plus a small set of hygiene hooks (trailing whitespace, end-of-file
+fixer, YAML/TOML syntax, merge-conflict markers, large-file guard).
+To run all hooks manually against the whole tree:
+
+```sh
+uv run pre-commit run --all-files
+```
+
+`pytest` is **not** in pre-commit (too slow for an every-commit gate);
+CI runs it on push and PR.
 
 ## Docs site (local)
 

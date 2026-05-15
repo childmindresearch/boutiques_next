@@ -31,9 +31,7 @@ def _descriptor_with_id(input_id: str):
     )
 
 
-@pytest.mark.parametrize(
-    "input_id", ["register", "copy", "json", "dict", "schema", "validate"]
-)
+@pytest.mark.parametrize("input_id", ["register", "copy", "json", "dict", "schema", "validate"])
 def test_shadowing_input_id_emits_no_warning(input_id):
     descriptor = _descriptor_with_id(input_id)
     with warnings.catch_warnings():

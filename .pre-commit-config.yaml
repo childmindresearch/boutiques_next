@@ -1,0 +1,38 @@
+# Local pre-commit setup. Mirrors the CI checks (ruff + mypy); pytest is
+# left for CI since it's too slow for an every-commit gate.
+#
+# Install:  uv sync && uv run pre-commit install
+# Run all:  uv run pre-commit run --all-files
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.13
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # mypy runs against our actual installed env so it stays in lockstep
+  # with the version + plugins pinned in pyproject.toml and uv.lock.
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy
+        entry: uv run mypy
+        language: system
+        types: [python]
+        pass_filenames: false
+        # Limit to project sources; mypy config in pyproject.toml drives
+        # the actual scope.
+        files: ^src/

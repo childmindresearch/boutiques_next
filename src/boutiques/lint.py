@@ -83,9 +83,7 @@ def _recommend_value_key_format(d: AnyDescriptor) -> list[LintIssue]:
             issues.append(
                 LintIssue(
                     field=f"{path}.value-key",
-                    message=(
-                        f"Convention: value-keys should match [UPPER_CASE], got {vk!r}."
-                    ),
+                    message=(f"Convention: value-keys should match [UPPER_CASE], got {vk!r}."),
                 )
             )
     return issues
