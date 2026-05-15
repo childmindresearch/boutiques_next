@@ -47,6 +47,51 @@ def test_example_includes_only_required_by_default():
     assert set(inv.keys()) == required_ids
 
 
+def test_example_skips_flags_even_when_required():
+    """Flag inputs without ``optional: true`` should still be skipped from a minimum example.
+
+    A Flag's runtime semantics are "either passed or not" — value=false is
+    indistinguishable from absence — so the minimum example omits all flags
+    regardless of how the descriptor marked them. Matches the v0.5+styx
+    spec author's note about `optional` having no meaning for Flag inputs.
+    Real-world descriptors (e.g. niwrap-style) frequently leave `optional`
+    unset on flags.
+    """
+    descriptor = load(
+        {
+            "schema-version": "0.5",
+            "name": "t",
+            "description": "x",
+            "tool-version": "1.0",
+            "command-line": "tool [INPUT] [VERBOSE] [DEBUG]",
+            "inputs": [
+                {"id": "input", "name": "I", "type": "File", "value-key": "[INPUT]"},
+                {
+                    "id": "verbose",
+                    "name": "V",
+                    "type": "Flag",
+                    "command-line-flag": "-v",
+                    "value-key": "[VERBOSE]",
+                    # no optional field — defaults to false (required)
+                },
+                {
+                    "id": "debug",
+                    "name": "D",
+                    "type": "Flag",
+                    "command-line-flag": "-d",
+                    "value-key": "[DEBUG]",
+                    "optional": False,
+                },
+            ],
+        }
+    )
+    inv = generate(descriptor)
+    assert set(inv.keys()) == {"input"}
+    # --complete pulls the flags in
+    inv_complete = generate(descriptor, complete=True)
+    assert set(inv_complete.keys()) == {"input", "verbose", "debug"}
+
+
 def test_example_complete_includes_optional():
     descriptor = load(FSL_BET)
     inv = generate(descriptor, complete=True)

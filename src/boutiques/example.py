@@ -19,6 +19,12 @@ def generate(descriptor: AnyDescriptor, complete: bool = False) -> dict[str, Any
     By default, required inputs are populated. With ``complete=True``,
     optional inputs are populated as well. Sub-command unions pick the
     first candidate.
+
+    ``Flag`` inputs are treated as effectively optional regardless of
+    their declared ``optional`` field — at the runtime layer a flag's
+    absence and value=false are indistinguishable, so a minimum
+    invocation omits all flags. (This matches the v0.5+styx spec
+    author's note that ``optional`` has no meaning for Flag inputs.)
     """
     return _generate(descriptor, complete=complete)
 
@@ -29,8 +35,11 @@ def _generate(
 ) -> dict[str, Any]:
     invocation: dict[str, Any] = {}
     for inp in target.inputs or []:
-        if inp.optional and not complete:
-            continue
+        if not complete:
+            if inp.optional:
+                continue
+            if isinstance(inp, FlagInput):
+                continue
         invocation[inp.id] = _example_value(inp, complete=complete)
     return invocation
 

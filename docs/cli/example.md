@@ -10,6 +10,11 @@ By default only the **required** inputs are filled in. With `--complete`,
 optional inputs are filled in too — useful for visualising the maximal
 command-line.
 
+`Flag` inputs are treated as effectively optional regardless of their
+declared `optional` field — at the runtime layer, a flag's absence is
+indistinguishable from `value: false`, so a minimum example omits all
+flags. `--complete` includes them.
+
 ## Example
 
 ```sh
