@@ -19,7 +19,9 @@ exec_app = typer.Typer(
 
 @exec_app.command("simulate")
 def simulate(
-    descriptor: Path = typer.Argument(..., exists=True, readable=True),
+    descriptor: str = typer.Argument(
+        ..., help="Path or http(s) URL to a Boutiques descriptor."
+    ),
     invocation: Path = typer.Argument(..., exists=True, readable=True),
 ) -> None:
     """Resolve a descriptor + invocation into a command-line without running it."""
@@ -34,7 +36,9 @@ def simulate(
 
 @exec_app.command("launch")
 def launch(
-    descriptor: Path = typer.Argument(..., exists=True, readable=True),
+    descriptor: str = typer.Argument(
+        ..., help="Path or http(s) URL to a Boutiques descriptor."
+    ),
     invocation: Path = typer.Argument(..., exists=True, readable=True),
     runtime: str = typer.Option(
         "local",

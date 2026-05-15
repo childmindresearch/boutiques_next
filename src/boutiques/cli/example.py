@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import typer
 
@@ -14,7 +13,9 @@ from boutiques.loader import DescriptorLoadError, load
 def register(app: typer.Typer) -> None:
     @app.command("example")
     def example(
-        descriptor: Path = typer.Argument(..., exists=True, readable=True),
+        descriptor: str = typer.Argument(
+            ..., help="Path or http(s) URL to a Boutiques descriptor."
+        ),
         complete: bool = typer.Option(
             False,
             "--complete",
