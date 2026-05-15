@@ -6,12 +6,12 @@ import json
 from pathlib import Path
 from typing import Any
 
-from boutiques.models.v_0_5 import Descriptor as V05Descriptor
-from boutiques.models.v_styx_1 import Descriptor as VStyx1Descriptor
+from boutiques.models.v05 import Descriptor as V05Descriptor
+from boutiques.models.v05_styx import Descriptor as V05StyxDescriptor
 
 VERSIONS: dict[str, type] = {
     "0.5": V05Descriptor,
-    "0.5+styx": VStyx1Descriptor,
+    "0.5+styx": V05StyxDescriptor,
 }
 
 

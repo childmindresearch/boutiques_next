@@ -18,7 +18,7 @@ from typing import Optional, Union
 from pydantic import BaseModel, ConfigDict, Field
 
 from boutiques.models.common import IdStr, NonEmptyStr
-from boutiques.models.v_0_5.inputs import (
+from boutiques.models.v05.inputs import (
     FileInput,
     FlagInput,
     NumberInput,
@@ -26,7 +26,7 @@ from boutiques.models.v_0_5.inputs import (
     _BaseInput,
     _ListMixin,
 )
-from boutiques.models.v_0_5.outputs import Output
+from boutiques.models.v05.outputs import Output
 
 
 class SubCommandType(BaseModel):

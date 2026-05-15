@@ -1,7 +1,7 @@
 """Boutiques 0.5+styx descriptor model (strict superset of 0.5)."""
 
-from boutiques.models.v_styx_1.descriptor import Descriptor
-from boutiques.models.v_styx_1.inputs import (
+from boutiques.models.v05_styx.descriptor import Descriptor
+from boutiques.models.v05_styx.inputs import (
     FileInput,
     FlagInput,
     Input,

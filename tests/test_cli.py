@@ -24,7 +24,7 @@ def test_version_prints_package_version():
 
 
 def test_validate_ok():
-    result = runner.invoke(app, ["validate", str(FIXTURES / "v_0_5" / "fsl_bet.json")])
+    result = runner.invoke(app, ["validate", str(FIXTURES / "v05" / "fsl_bet.json")])
     assert result.exit_code == 0
     assert "OK" in result.stdout
 

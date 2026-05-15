@@ -2,19 +2,19 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Any, Literal, Optional, Union
+from typing import Any, Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from boutiques.models.common import HttpUrlStr, NonEmptyStr
-from boutiques.models.v_0_5.containers import ContainerImage
-from boutiques.models.v_0_5.environment import EnvironmentVariable
-from boutiques.models.v_0_5.errors import ErrorCode
-from boutiques.models.v_0_5.groups import Group
-from boutiques.models.v_0_5.inputs import Input
-from boutiques.models.v_0_5.outputs import Output
-from boutiques.models.v_0_5.resources import SuggestedResources
-from boutiques.models.v_0_5.tests import TestCase
+from boutiques.models.v05.containers import ContainerImage
+from boutiques.models.v05.environment import EnvironmentVariable
+from boutiques.models.v05.errors import ErrorCode
+from boutiques.models.v05.groups import Group
+from boutiques.models.v05.inputs import Input
+from boutiques.models.v05.outputs import Output
+from boutiques.models.v05.resources import SuggestedResources
+from boutiques.models.v05.tests import TestCase
 
 TagValue = Union[str, list[str], bool]
 
@@ -104,10 +104,5 @@ class Descriptor(BaseModel):
 __all__ = ["Descriptor"]
 
 
-# Force Pydantic to finalize forward references (none here, but kept for parity
-# with v_styx_1 which is recursive).
+# Kept for parity with v05_styx, whose SubCommandType is self-referential.
 Descriptor.model_rebuild()
-
-
-# The annotated re-export below pins the discriminator field for tooling.
-DescriptorV05 = Annotated[Descriptor, Field(description="Boutiques 0.5 descriptor.")]
