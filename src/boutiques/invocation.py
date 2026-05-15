@@ -49,6 +49,18 @@ def invocation_model_for(
     return _build_model(descriptor_or_subcommand, inject_id=None)
 
 
+def invocation_schema(descriptor: AnyDescriptor) -> dict[str, Any]:
+    """Return a JSON Schema describing valid invocations for ``descriptor``.
+
+    Produced by introspecting the dynamic Pydantic model from
+    :func:`invocation_model_for`. The schema captures required vs. optional
+    inputs, value-choices as ``enum``, numeric ranges, list bounds, and
+    sub-command unions as discriminated ``oneOf`` branches — i.e.
+    everything the runtime invocation enforcement checks structurally.
+    """
+    return invocation_model_for(descriptor).model_json_schema()
+
+
 def _build_model(
     target: AnyDescriptor | SubCommandType,
     inject_id: str | None,

@@ -62,8 +62,12 @@ short-circuiting on the first failure:
   command-line string.
 - `bosh exec launch <desc> <invocation> [-r runtime] [--cwd dir]
   [--runtime-args "…"]` — actually runs it.
-- `bosh schema-export [--output DIR] [--version V] [--stdout]` — emits
-  the JSON Schema for one or both versions, ready for hosting.
+- `bosh schema-export [--output DIR] [--version V]` — emits the
+  descriptor JSON Schema. Without `-o`, prints the v0.5+styx schema to
+  stdout (jq-friendly); with `-o`, writes one or both versions to disk.
+- `bosh invocation <descriptor> [-o FILE]` — emits the JSON Schema for
+  valid invocations of one specific descriptor (types, choices, ranges,
+  list bounds, sub-command union branches). Prints to stdout by default.
 - `bosh test <descriptor>` — runs the test cases declared in the
   descriptor's `tests` field (invocation + `exit-code` / per-output
   `md5-reference` assertions). Exits 0/1.

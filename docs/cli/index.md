@@ -13,6 +13,7 @@ argument; GitHub blob URLs are auto-rewritten to their raw form.
 | [`bosh test`](test.md) | Run the test cases embedded in the descriptor's `tests` field. |
 | [`bosh pprint`](pprint.md) | Render a descriptor as a structured tree view. |
 | [`bosh schema-export`](schema-export.md) | Emit the JSON Schema for one or both schema versions. |
+| [`bosh invocation`](invocation.md) | Emit the invocation JSON Schema for a specific descriptor. |
 | [`bosh version`](version.md) | Print the installed version. |
 
 ## Exit codes

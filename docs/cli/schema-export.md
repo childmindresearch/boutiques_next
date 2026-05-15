@@ -3,29 +3,32 @@
 Generate the JSON Schema for one or both supported schema versions.
 
 ```sh
-bosh schema-export [--output DIR] [--version VERSION] [--stdout]
+bosh schema-export [--output DIR] [--version VERSION]
 ```
 
 | Flag | Default | Description |
 | --- | --- | --- |
-| `-o`, `--output` | `docs/schema` | Directory to write `descriptor.schema.json` files into. |
-| `--version` | *(both)* | Limit output to a single version (`0.5` or `0.5+styx`). |
-| `--stdout` | `false` | Print the schema to stdout instead of writing to disk. Requires `--version`. |
+| `-o`, `--output` | — *(prints to stdout)* | Directory to write `descriptor.schema.json` files into. |
+| `--version` | `0.5+styx` *(stdout mode)* / *(both)* *(disk mode)* | Limit output to a single version (`0.5` or `0.5+styx`). |
+
+Without `-o`, the schema is printed to stdout (one version per
+invocation; defaults to `0.5+styx`). With `-o`, the file is written to
+disk; if `--version` is omitted, every known version is written.
 
 ## Examples
 
 ```sh
-# Write both versions to docs/schema/0.5/ and docs/schema/0.5+styx/
+# Print the v0.5+styx schema (default) to stdout
 bosh schema-export
 
-# Custom output directory
-bosh schema-export -o build/schemas
+# Pipe to jq
+bosh schema-export --version 0.5 | jq .properties
 
-# Just one version
+# Write both versions to docs/schema/0.5/ and docs/schema/0.5+styx/
+bosh schema-export -o docs/schema
+
+# Just one version to disk
 bosh schema-export --version 0.5 -o build/schemas
-
-# Pipe one schema to another tool
-bosh schema-export --stdout --version 0.5+styx | jq .properties
 ```
 
 ## CI usage
