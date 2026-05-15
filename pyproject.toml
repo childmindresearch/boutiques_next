@@ -18,7 +18,8 @@ dependencies = [
 bosh = "boutiques.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/boutiques/boutiques"
+# Pre-merge home; will flip to boutiques/boutiques once upstreamed.
+Homepage = "https://github.com/childmindresearch/boutiques_next"
 
 [build-system]
 requires = ["uv_build>=0.5,<1.0"]

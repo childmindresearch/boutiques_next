@@ -1,7 +1,8 @@
 site_name: Boutiques
 site_description: A Python toolkit for the Boutiques descriptor standard.
-site_url: https://boutiques.github.io/boutiques/
-repo_url: https://github.com/boutiques/boutiques
+# Pre-merge home; will flip to boutiques/boutiques once upstreamed.
+site_url: https://childmindresearch.github.io/boutiques_next/
+repo_url: https://github.com/childmindresearch/boutiques_next
 edit_uri: edit/main/docs/
 
 theme:

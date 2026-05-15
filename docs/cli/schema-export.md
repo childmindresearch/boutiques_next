@@ -32,10 +32,14 @@ bosh schema-export --stdout --version 0.5+styx | jq .properties
 
 This is the command CI runs before publishing the docs site, so the
 generated JSON Schema artifacts land alongside the rest of the docs and
-serve from stable URLs:
+serve from stable URLs. While this lives under
+`childmindresearch/boutiques_next`:
 
-- `https://boutiques.github.io/boutiques/schema/0.5/descriptor.schema.json`
-- `https://boutiques.github.io/boutiques/schema/0.5+styx/descriptor.schema.json`
+- `https://childmindresearch.github.io/boutiques_next/schema/0.5/descriptor.schema.json`
+- `https://childmindresearch.github.io/boutiques_next/schema/0.5+styx/descriptor.schema.json`
+
+Once merged upstream, these will flip to
+`https://boutiques.github.io/boutiques/schema/…`.
 
 ## Python equivalent
 

@@ -29,8 +29,8 @@ uv add boutiques            # or: pip install boutiques
 For development:
 
 ```sh
-git clone https://github.com/boutiques/boutiques
-cd boutiques
+git clone https://github.com/childmindresearch/boutiques_next
+cd boutiques_next
 uv sync
 uv run bosh --help
 ```
@@ -71,6 +71,6 @@ bosh validate https://github.com/boutiques/boutiques/blob/main/example.json
 ## Status
 
 Early development. The public Python API is not yet stable; the
-descriptor spec is. See [the roadmap](https://github.com/boutiques/boutiques/blob/main/ROADMAP.md)
+descriptor spec is. See [the roadmap](https://github.com/childmindresearch/boutiques_next/blob/main/ROADMAP.md)
 for what's shipped, what's intentionally dropped vs. classic boutiques,
 and what's open.
