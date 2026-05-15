@@ -1,61 +1,67 @@
 # `bosh invocation`
 
-Emit the JSON Schema describing valid **invocations** for a specific
-descriptor. (For the schema of *descriptors themselves*, see
-[`bosh schema-export`](schema-export.md).)
+Validate an invocation against a descriptor, or embed the invocation
+schema back into the descriptor file. Drop-in replacement for classic
+boutiques' `bosh invocation`.
+
+For dumping the invocation schema to stdout / a file, see
+[`bosh invocation-schema`](invocation-schema.md).
 
 ```sh
-bosh invocation <descriptor> [-o FILE]
+bosh invocation <descriptor> [-i INVOCATION] [-w]
 ```
 
 | Flag | Description |
 | --- | --- |
-| `-o`, `--output` | File to write the schema into. Without `-o`, prints to stdout. |
+| `-i`, `--invocation` | Validate this invocation file against the descriptor's schema. |
+| `-w`, `--write-schema` | Embed the generated invocation schema into the descriptor file (under `invocation-schema`). Requires the descriptor to be a local path. |
 
-## What's in the schema
+## Behaviour
 
-The schema is derived from the descriptor's inputs and reflects
-everything `bosh exec simulate` / `launch` enforces structurally:
-
-- Required vs. optional inputs.
-- Per-input types (`string`, `number`, `boolean`, list-of-X).
-- `value-choices` as `enum`.
-- Numeric ranges (`minimum` / `maximum` / `exclusive*`).
-- List bounds (`minItems` / `maxItems`).
-- Sub-command unions as discriminated `oneOf` branches keyed by `id`.
-
-Cross-input constraints (`requires-inputs`, group rules,
-`value-requires`, …) are enforced at runtime but don't lower to JSON
-Schema; they belong to `bosh exec` only.
+- **Plain mode** (no flags): confirms the descriptor's input shape is
+  internally consistent — i.e. an invocation schema can be built. Prints
+  `OK` on success, exits 1 otherwise.
+- **`-i invocation.json`**: validates the given invocation against the
+  schema using the same three layers `bosh exec simulate` runs
+  (structural / cross-input / groups). Prints `OK` or the failing
+  locations; exits 0/1.
+- **`-w`**: computes the invocation schema and writes it back into the
+  descriptor file as the `invocation-schema` field. The descriptor is
+  re-serialized with two-space indentation. Useful when shipping
+  descriptors with cached schemas; the toolkit itself generates the
+  schema on the fly so caching is optional.
 
 ## Examples
 
-Pipe through `jq`:
-
 ```sh
-$ bosh invocation fsl_bet.json | jq '.properties.infile'
-{
-  "title": "Infile",
-  "type": "string"
-}
-```
+# Sanity-check a descriptor
+$ bosh invocation fsl_bet.json
+OK
 
-Save for distribution:
+# Validate a specific invocation
+$ bosh invocation fsl_bet.json -i invocation.json
+fractional_intensity: Input should be less than or equal to 1
 
-```sh
-$ bosh invocation https://github.com/.../bet/boutiques.json -o bet.invocation.schema.json
-Wrote bet.invocation.schema.json
+# Embed the schema for distribution
+$ bosh invocation fsl_bet.json -w
+Wrote invocation-schema into fsl_bet.json
 ```
 
 ## Python equivalent
 
 ```python
 from boutiques import load
-from boutiques.invocation import invocation_schema
+from boutiques.invocation_check import validate_invocation
 
-schema = invocation_schema(load("descriptor.json"))
+descriptor = load("fsl_bet.json")
+errors = validate_invocation(descriptor, {"infile": "/in.nii", "maskfile": "out.nii"})
+if errors:
+    for e in errors:
+        print(e)
 ```
 
-`invocation_schema(descriptor)` returns the JSON Schema dict directly;
-`invocation_model_for(descriptor)` returns the underlying Pydantic
-model class if you want to validate dicts programmatically.
+For the schema itself:
+```python
+from boutiques.invocation import invocation_schema
+schema = invocation_schema(descriptor)
+```

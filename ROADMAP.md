@@ -65,9 +65,14 @@ short-circuiting on the first failure:
 - `bosh schema-export [--output DIR] [--version V]` — emits the
   descriptor JSON Schema. Without `-o`, prints the v0.5+styx schema to
   stdout (jq-friendly); with `-o`, writes one or both versions to disk.
-- `bosh invocation <descriptor> [-o FILE]` — emits the JSON Schema for
-  valid invocations of one specific descriptor (types, choices, ranges,
-  list bounds, sub-command union branches). Prints to stdout by default.
+- `bosh invocation <descriptor> [-i INV] [-w]` — drop-in for classic
+  bosh's invocation validator: confirms a schema can be built, optionally
+  validates a sample invocation against it, or embeds it into the
+  descriptor under `invocation-schema` with `-w`.
+- `bosh invocation-schema <descriptor> [-o FILE]` — pipe-friendly
+  schema dumper. Prints the per-descriptor invocation JSON Schema to
+  stdout (types, choices, ranges, list bounds, sub-command union
+  branches).
 - `bosh test <descriptor>` — runs the test cases declared in the
   descriptor's `tests` field (invocation + `exit-code` / per-output
   `md5-reference` assertions). Exits 0/1.

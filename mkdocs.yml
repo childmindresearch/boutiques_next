@@ -52,6 +52,7 @@ nav:
       - pprint: cli/pprint.md
       - schema-export: cli/schema-export.md
       - invocation: cli/invocation.md
+      - invocation-schema: cli/invocation-schema.md
       - version: cli/version.md
   - Python API:
       - api/index.md
