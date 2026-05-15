@@ -107,16 +107,3 @@ uv sync --group docs
 uv run bosh schema-export -o docs/schema   # generate JSON Schema artifacts
 uv run mkdocs serve                        # http://127.0.0.1:8000
 ```
-
-## CI
-
-GitHub Actions runs on every push and PR — see
-[`.github/workflows/`](.github/workflows). The `ci` workflow runs
-`ruff check`, `ruff format --check`, `mypy`, and `pytest` across
-Python 3.11 and 3.13. The `docs` workflow exports the JSON Schemas,
-builds the mkdocs site with `--strict`, and publishes to GitHub Pages
-on push to `main`. Both use `uv` with the lockfile-pinned dependencies.
-
-For Pages publishing to work, the repository must have GitHub Pages
-configured to deploy from Actions (Settings → Pages → "Source: GitHub
-Actions").
