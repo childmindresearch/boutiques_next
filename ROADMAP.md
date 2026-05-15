@@ -37,6 +37,24 @@ what's still open.
   convention, Windows-unsafe path-template chars, repeated `[KEY]` in
   one command-line.
 
+### Invocation enforcement (`boutiques.invocation_check`)
+Validates a concrete invocation against a descriptor. Three layers,
+short-circuiting on the first failure:
+
+- **Structural** via the dynamic Pydantic model: types, ``Literal`` for
+  ``value-choices``, ``ge``/``gt``/``le``/``lt`` for numeric ranges
+  (honoring ``exclusive-minimum``/``maximum``), ``min_length`` /
+  ``max_length`` for list bounds.
+- **Cross-input**: ``requires-inputs`` (input or group reference),
+  ``disables-inputs``, plus ``value-requires`` / ``value-disables``
+  applied per active choice. Recurses through sub-commands.
+- **Groups**: ``mutually-exclusive``, ``one-is-required``,
+  ``all-or-none`` on top-level groups.
+
+`resolve()` (and therefore `simulate` / `launch` / `test`) calls
+`validate_invocation` first; failures raise
+`InvocationValidationError` with structured location/message entries.
+
 ### CLI (`bosh`)
 - `bosh validate <descriptor>` — three-tier output, exit 0/1.
 - `bosh example <descriptor> [--complete]` — sample invocation JSON.
@@ -121,11 +139,6 @@ direction or upstream consensus moved elsewhere:
 *(All near-term items shipped; see Quality above.)*
 
 ### Medium-term
-- **Runtime invocation enforcement** for: `value-choices` range checks
-  beyond structural Literal, `disables-inputs` / `requires-inputs`,
-  `value-disables` / `value-enables`, group constraints
-  (mutually-exclusive / one-is-required / all-or-none). Currently only
-  enforced at semantic-validation time, not at invocation time.
 - **Better Pydantic error messages.** Pydantic's default dump is dense;
   pretty-print errors in the CLI (location → message lines, with `rich`
   coloring).

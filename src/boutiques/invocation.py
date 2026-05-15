@@ -87,6 +87,7 @@ def _field_spec(inp: Any) -> tuple[str, Any, Any]:
     # ``py_type`` may be a Pydantic model class, a typing alias, or a union.
     # We type it as Any so each branch can assign freely.
     py_type: Any
+    extra: dict[str, Any] = {}
     if isinstance(inp, SubCommandInput):
         py_type = _build_model(inp.type, inject_id=None)
     elif isinstance(inp, SubCommandUnionInput):
@@ -97,13 +98,43 @@ def _field_spec(inp: Any) -> tuple[str, Any, Any]:
         base_type = _python_type_of(inp)
         is_list = bool(getattr(inp, "list_", False))
         py_type = list[base_type] if is_list else base_type  # type: ignore[valid-type]
+        extra.update(_constraint_kwargs(inp, is_list))
 
     if inp.optional:
         py_type = py_type | None
-        default = Field(default=None, alias=alias)
+        default = Field(default=None, alias=alias, **extra)
     else:
-        default = Field(..., alias=alias)
+        default = Field(..., alias=alias, **extra)
     return py_name, py_type, default
+
+
+def _constraint_kwargs(inp: Any, is_list: bool) -> dict[str, Any]:
+    """Pydantic ``Field`` kwargs derived from the input's range/list-bound attrs.
+
+    - ``Number`` inputs: ``ge``/``gt``/``le``/``lt`` from
+      ``minimum``/``maximum`` (honoring ``exclusive-minimum``/``exclusive-maximum``).
+      Skipped when ``value-choices`` is set, since ``Literal`` already
+      enforces the closed set.
+    - List inputs: ``min_length`` / ``max_length`` from
+      ``min-list-entries`` / ``max-list-entries``.
+    """
+    kwargs: dict[str, Any] = {}
+
+    if isinstance(inp, NumberInput) and not inp.value_choices:
+        if inp.minimum is not None:
+            key = "gt" if inp.exclusive_minimum else "ge"
+            kwargs[key] = inp.minimum
+        if inp.maximum is not None:
+            key = "lt" if inp.exclusive_maximum else "le"
+            kwargs[key] = inp.maximum
+
+    if is_list:
+        if inp.min_list_entries is not None:
+            kwargs["min_length"] = int(inp.min_list_entries)
+        if inp.max_list_entries is not None:
+            kwargs["max_length"] = int(inp.max_list_entries)
+
+    return kwargs
 
 
 def _python_type_of(inp: Any) -> Any:

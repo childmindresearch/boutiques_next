@@ -20,7 +20,15 @@ Internally, the template is tokenised once via `shlex.split`. Each
 input's `value-key` is then replaced with a list of rendered tokens —
 possibly zero (optional input omitted), one (a scalar), or many (a flag
 + value pair, a list with space separator). The output is rendered
-through `shlex.join`, so values containing spaces are correctly quoted:
+through `shlex.join`, so values containing spaces are correctly quoted.
+
+Before any tokenisation happens the invocation is validated against
+the descriptor: structural shape via Pydantic (types, choices,
+numeric ranges, list bounds), cross-input rules (`requires-inputs`,
+`disables-inputs`, `value-requires`, `value-disables`), and group
+constraints (`mutually-exclusive`, `one-is-required`, `all-or-none`).
+Any failure prevents the simulate/launch and reports the violating
+location.
 
 ```sh
 $ bosh exec simulate descriptor.json invocation.json

@@ -32,6 +32,7 @@ import shlex
 from typing import Any
 
 from boutiques.invocation import invocation_model_for
+from boutiques.invocation_check import InvocationValidationError, validate_invocation
 from boutiques.loader import AnyDescriptor
 from boutiques.models.v05.inputs import FlagInput
 from boutiques.models.v05_styx.inputs import (
@@ -42,7 +43,15 @@ from boutiques.models.v05_styx.inputs import (
 
 
 def resolve(descriptor: AnyDescriptor, invocation: dict[str, Any]) -> list[str]:
-    """Validate the invocation and return the resolved argv token list."""
+    """Validate the invocation and return the resolved argv token list.
+
+    Three layers run before resolution: structural (Pydantic), cross-input
+    (requires/disables/value-requires/value-disables), and group constraints.
+    Any failure raises :class:`InvocationValidationError`.
+    """
+    errors = validate_invocation(descriptor, invocation)
+    if errors:
+        raise InvocationValidationError(errors)
     model_cls = invocation_model_for(descriptor)
     parsed = model_cls.model_validate(invocation)
     values = parsed.model_dump(by_alias=True, exclude_none=True)
