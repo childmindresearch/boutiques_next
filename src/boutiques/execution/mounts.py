@@ -34,7 +34,7 @@ def collect_file_mounts(
     return _dedupe_descendants(raw)
 
 
-def _iter_file_paths(inputs: list | None, values: dict[str, Any]) -> Iterator[str]:
+def _iter_file_paths(inputs: list[Any] | None, values: dict[str, Any]) -> Iterator[str]:
     for inp in inputs or []:
         value = values.get(inp.id)
         if value is None:

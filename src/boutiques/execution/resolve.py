@@ -51,7 +51,7 @@ def resolve(descriptor: AnyDescriptor, invocation: dict[str, Any]) -> list[str]:
 
 def _resolve_template(
     template: str,
-    inputs: list | None,
+    inputs: list[Any] | None,
     values: dict[str, Any],
 ) -> list[str]:
     template_tokens = shlex.split(template)
@@ -64,7 +64,7 @@ def _resolve_template(
 
 def _expand_token(
     token: str,
-    inputs: list,
+    inputs: list[Any],
     values: dict[str, Any],
 ) -> list[str]:
     # Exact value-key match — render to a token list (possibly empty/multi).

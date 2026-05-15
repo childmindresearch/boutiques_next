@@ -55,7 +55,7 @@ class SubCommandType(BaseModel):
         alias="command-line",
         description="Command-line template for this sub-command.",
     )
-    inputs: list[Input] | None = Field(  # type: ignore[name-defined]
+    inputs: list[Input] | None = Field(
         default=None,
         description="Inputs available within this sub-command.",
     )

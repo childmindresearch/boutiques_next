@@ -123,7 +123,7 @@ class FlagInput(_BaseInput):
     """Boolean flag input. Always carries a command-line flag."""
 
     type: Literal["Flag"]
-    command_line_flag: str = Field(  # type: ignore[assignment]
+    command_line_flag: str = Field(
         alias="command-line-flag",
         description="Option flag emitted when the flag is set.",
     )

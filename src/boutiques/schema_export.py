@@ -6,10 +6,12 @@ import json
 from pathlib import Path
 from typing import Any
 
+from pydantic import BaseModel
+
 from boutiques.models.v05 import Descriptor as V05Descriptor
 from boutiques.models.v05_styx import Descriptor as V05StyxDescriptor
 
-VERSIONS: dict[str, type] = {
+VERSIONS: dict[str, type[BaseModel]] = {
     "0.5": V05Descriptor,
     "0.5+styx": V05StyxDescriptor,
 }

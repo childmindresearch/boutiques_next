@@ -21,7 +21,7 @@ from __future__ import annotations
 import ast
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from boutiques.loader import AnyDescriptor
 
@@ -116,7 +116,7 @@ def _pick_conditional_template(
                 default = template
                 continue
             if _eval_safely(expression, value_map):
-                return template
+                return cast(str, template)
     return default
 
 

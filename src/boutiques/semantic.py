@@ -12,16 +12,14 @@ Each rule returns ``ValidationError`` instances with a JSON-pointer-like
 
 from __future__ import annotations
 
-import re
 from collections import Counter
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterator
 from typing import Any
 
 from boutiques._errors import ValidationError
 from boutiques.loader import AnyDescriptor
 from boutiques.models.v05_styx.inputs import (
     SubCommandInput,
-    SubCommandType,
     SubCommandUnionInput,
 )
 
@@ -255,8 +253,3 @@ def _check_subcommand_union_ids(descriptor: AnyDescriptor) -> list[ValidationErr
     return errors
 
 
-# Quiet unused-import warning when ``re`` / ``Iterable`` / ``SubCommandType`` are
-# only used by future checks.
-_ = re
-_ = Iterable
-_ = SubCommandType

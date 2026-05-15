@@ -16,18 +16,18 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from boutiques.models.v05 import Descriptor as V05Descriptor
 from boutiques.models.v05_styx import Descriptor as V05StyxDescriptor
 
 AnyDescriptor = V05Descriptor | V05StyxDescriptor
 
-_SCHEMA_MODELS: dict[str, type] = {
+_SCHEMA_MODELS: dict[str, type[BaseModel]] = {
     "0.5": V05Descriptor,
     "0.5+styx": V05StyxDescriptor,
 }
@@ -57,7 +57,7 @@ def load(source: str | Path | dict[str, Any]) -> AnyDescriptor:
         )
     model_cls = _SCHEMA_MODELS[version]
     try:
-        return model_cls.model_validate(data)
+        return cast(AnyDescriptor, model_cls.model_validate(data))
     except ValidationError as exc:
         raise DescriptorLoadError(str(exc)) from exc
 
@@ -66,14 +66,14 @@ def _read(source: str | Path | dict[str, Any]) -> dict[str, Any]:
     if isinstance(source, dict):
         return source
     if isinstance(source, Path):
-        return json.loads(source.read_text())
+        return cast(dict[str, Any], json.loads(source.read_text()))
     # str: try a path first, then a URL, then a JSON literal.
     as_path = Path(source)
     if as_path.exists():
-        return json.loads(as_path.read_text())
+        return cast(dict[str, Any], json.loads(as_path.read_text()))
     if _looks_like_url(source):
         return _fetch_url(source)
-    return json.loads(source)
+    return cast(dict[str, Any], json.loads(source))
 
 
 def _looks_like_url(s: str) -> bool:
@@ -89,7 +89,7 @@ def _fetch_url(url: str) -> dict[str, Any]:
     except URLError as exc:
         raise DescriptorLoadError(f"Failed to fetch {url}: {exc.reason}") from exc
     try:
-        return json.loads(payload)
+        return cast(dict[str, Any], json.loads(payload))
     except json.JSONDecodeError as exc:
         raise DescriptorLoadError(f"Response from {url} is not valid JSON: {exc.msg}") from exc
 

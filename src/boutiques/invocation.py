@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import operator
 from functools import reduce
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, cast
 
 from pydantic import BaseModel, ConfigDict, Field, create_model
 
@@ -60,19 +60,23 @@ def _build_model(
         fields["id"] = (Literal[inject_id], Field(...))
 
     inputs = target.inputs or []
+    target_id = getattr(target, "id", None)
     for inp in inputs:
         py_name, py_type, default = _field_spec(inp)
         if py_name == "id" and inject_id is not None:
             raise InvocationModelError(
-                f"Sub-command {target.id!r} has an input also named 'id', "
+                f"Sub-command {target_id!r} has an input also named 'id', "
                 "which collides with the discriminator field."
             )
         fields[py_name] = (py_type, default)
 
-    name_source = getattr(target, "name", None) or getattr(target, "id", "Descriptor")
-    model_name = f"{_sanitize(name_source)}Invocation"
+    name_source = getattr(target, "name", None) or target_id or "Descriptor"
+    model_name = f"{_sanitize(str(name_source))}Invocation"
     config = ConfigDict(populate_by_name=True, extra="forbid")
-    return create_model(model_name, __config__=config, **fields)
+    return cast(
+        type[BaseModel],
+        create_model(model_name, __config__=config, **fields),  # type: ignore[call-overload]
+    )
 
 
 def _field_spec(inp: Any) -> tuple[str, Any, Any]:
@@ -80,9 +84,11 @@ def _field_spec(inp: Any) -> tuple[str, Any, Any]:
     py_name = _safe_identifier(inp.id)
     alias = inp.id
 
+    # ``py_type`` may be a Pydantic model class, a typing alias, or a union.
+    # We type it as Any so each branch can assign freely.
+    py_type: Any
     if isinstance(inp, SubCommandInput):
-        nested = _build_model(inp.type, inject_id=None)
-        py_type = nested
+        py_type = _build_model(inp.type, inject_id=None)
     elif isinstance(inp, SubCommandUnionInput):
         members = tuple(_build_model(sc, inject_id=sc.id) for sc in inp.type)
         union = reduce(operator.or_, members)
@@ -104,16 +110,14 @@ def _python_type_of(inp: Any) -> Any:
     if isinstance(inp, FlagInput):
         return bool
     if isinstance(inp, StringInput):
-        choices = inp.value_choices
-        if choices:
-            return Literal[tuple(choices)]  # type: ignore[valid-type]
+        if inp.value_choices:
+            return Literal[tuple(inp.value_choices)]
         return str
     if isinstance(inp, FileInput):
         return str
     if isinstance(inp, NumberInput):
-        choices = inp.value_choices
-        if choices:
-            return Literal[tuple(choices)]  # type: ignore[valid-type]
+        if inp.value_choices:
+            return Literal[tuple(inp.value_choices)]
         return int if inp.integer else float
     raise InvocationModelError(f"Unsupported input variant: {type(inp).__name__}")
 
