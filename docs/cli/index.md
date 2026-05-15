@@ -10,6 +10,7 @@ argument; GitHub blob URLs are auto-rewritten to their raw form.
 | [`bosh example`](example.md) | Generate a sample invocation for a descriptor. |
 | [`bosh exec simulate`](exec.md#simulate) | Resolve a descriptor + invocation into the command-line that would run, without running it. |
 | [`bosh exec launch`](exec.md#launch) | Resolve and actually run the tool under a local, docker, or singularity runtime. |
+| [`bosh test`](test.md) | Run the test cases embedded in the descriptor's `tests` field. |
 | [`bosh schema-export`](schema-export.md) | Emit the JSON Schema for one or both schema versions. |
 | [`bosh version`](version.md) | Print the installed version. |
 

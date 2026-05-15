@@ -46,6 +46,9 @@ what's still open.
   [--runtime-args "…"]` — actually runs it.
 - `bosh schema-export [--output DIR] [--version V] [--stdout]` — emits
   the JSON Schema for one or both versions, ready for hosting.
+- `bosh test <descriptor>` — runs the test cases declared in the
+  descriptor's `tests` field (invocation + `exit-code` / per-output
+  `md5-reference` assertions). Exits 0/1.
 - `bosh version`.
 - All commands accept paths *or* http(s) URLs; GitHub blob URLs are
   auto-rewritten to raw.
@@ -123,8 +126,6 @@ direction or upstream consensus moved elsewhere:
   `value-disables` / `value-enables`, group constraints
   (mutually-exclusive / one-is-required / all-or-none). Currently only
   enforced at semantic-validation time, not at invocation time.
-- **`bosh test`** runner using the descriptor's `tests` field
-  (invocations + assertions like `exit-code` and `output-files` MD5).
 - **Better Pydantic error messages.** Pydantic's default dump is dense;
   pretty-print errors in the CLI (location → message lines, with `rich`
   coloring).

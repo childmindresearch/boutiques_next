@@ -46,6 +46,7 @@ nav:
       - validate: cli/validate.md
       - example: cli/example.md
       - exec: cli/exec.md
+      - test: cli/test.md
       - schema-export: cli/schema-export.md
       - version: cli/version.md
   - Python API:
