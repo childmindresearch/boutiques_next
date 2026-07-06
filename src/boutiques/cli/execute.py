@@ -90,9 +90,7 @@ def launch(
     descriptor: str = typer.Argument(
         ..., help="Path, http(s) URL, or JSON string of a Boutiques descriptor."
     ),
-    invocation: str = typer.Argument(
-        ..., help="Invocation as a JSON file path or JSON string."
-    ),
+    invocation: str = typer.Argument(..., help="Invocation as a JSON file path or JSON string."),
     volumes: list[str] = typer.Option(
         [],
         "-v",

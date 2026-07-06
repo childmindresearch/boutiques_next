@@ -410,9 +410,7 @@ def test_cli_simulate_includes_descriptor_defaults(tmp_path):
         )
     )
 
-    result = CliRunner().invoke(
-        app, ["exec", "simulate", str(descriptor_path), "-i", '{"x": "v"}']
-    )
+    result = CliRunner().invoke(app, ["exec", "simulate", str(descriptor_path), "-i", '{"x": "v"}'])
     assert result.exit_code == 0
     assert "--species human" in result.stdout
 
