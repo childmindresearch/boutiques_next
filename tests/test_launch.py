@@ -317,7 +317,8 @@ def test_cli_simulate_accepts_i_flag(tmp_path):
     assert "hello" in result.stdout
 
 
-def test_cli_simulate_both_positional_and_i_errors(tmp_path):
+def test_cli_simulate_rejects_positional_invocation(tmp_path):
+    """Classic simulate takes the invocation via -i only; no positional form."""
     import json
 
     from typer.testing import CliRunner
@@ -342,11 +343,142 @@ def test_cli_simulate_both_positional_and_i_errors(tmp_path):
 
     result = CliRunner().invoke(
         app,
-        ["exec", "simulate", str(descriptor_path), str(inv_path), "-i", str(inv_path)],
+        ["exec", "simulate", str(descriptor_path), str(inv_path)],
     )
-    assert result.exit_code == 1
+    assert result.exit_code != 0
+
+
+def test_cli_simulate_accepts_invocation_as_json_string(tmp_path):
+    """Classic -i accepts a JSON string, not just a file path."""
+    import json
+
+    from typer.testing import CliRunner
+
+    from boutiques.cli import app
+
+    descriptor_path = tmp_path / "descriptor.json"
+    descriptor_path.write_text(
+        json.dumps(
+            {
+                "schema-version": "0.5",
+                "name": "t",
+                "description": "x",
+                "tool-version": "1.0",
+                "command-line": "tool [X]",
+                "inputs": [{"id": "x", "name": "X", "type": "String", "value-key": "[X]"}],
+            }
+        )
+    )
+
+    result = CliRunner().invoke(
+        app, ["exec", "simulate", str(descriptor_path), "-i", '{"x": "hello"}']
+    )
+    assert result.exit_code == 0
+    assert "hello" in result.stdout
+
+
+def test_cli_simulate_includes_descriptor_defaults(tmp_path):
+    """Optional inputs with a default-value appear in the simulated command."""
+    import json
+
+    from typer.testing import CliRunner
+
+    from boutiques.cli import app
+
+    descriptor_path = tmp_path / "descriptor.json"
+    descriptor_path.write_text(
+        json.dumps(
+            {
+                "schema-version": "0.5",
+                "name": "t",
+                "description": "x",
+                "tool-version": "1.0",
+                "command-line": "tool [X] [SPECIES]",
+                "inputs": [
+                    {"id": "x", "name": "X", "type": "String", "value-key": "[X]"},
+                    {
+                        "id": "species",
+                        "name": "Species",
+                        "type": "String",
+                        "optional": True,
+                        "default-value": "human",
+                        "command-line-flag": "--species",
+                        "value-key": "[SPECIES]",
+                    },
+                ],
+            }
+        )
+    )
+
+    result = CliRunner().invoke(
+        app, ["exec", "simulate", str(descriptor_path), "-i", '{"x": "v"}']
+    )
+    assert result.exit_code == 0
+    assert "--species human" in result.stdout
+
+
+def test_default_value_satisfies_validation_like_classic():
+    """Classic fills default-values before validating; an omitted default that
+    satisfies a one-is-required group must not be rejected."""
+    from boutiques.invocation_check import validate_invocation
+
+    descriptor = load(
+        {
+            "schema-version": "0.5",
+            "name": "t",
+            "description": "x",
+            "tool-version": "1.0",
+            "command-line": "tool [A] [B]",
+            "inputs": [
+                {
+                    "id": "a",
+                    "name": "A",
+                    "type": "String",
+                    "optional": True,
+                    "default-value": "on",
+                    "value-key": "[A]",
+                },
+                {"id": "b", "name": "B", "type": "String", "optional": True, "value-key": "[B]"},
+            ],
+            "groups": [
+                {"id": "g", "name": "G", "members": ["a", "b"], "one-is-required": True},
+            ],
+        }
+    )
+    # Neither member supplied, but 'a' has a default -> classic accepts it.
+    assert validate_invocation(descriptor, {}) == []
+
+
+def test_cli_launch_unimplemented_flag_refuses(tmp_path):
+    """A not-yet-implemented classic flag exits non-zero with an issue pointer."""
+    import json
+
+    from typer.testing import CliRunner
+
+    from boutiques.cli import app
+
+    descriptor_path = tmp_path / "descriptor.json"
+    descriptor_path.write_text(
+        json.dumps(
+            {
+                "schema-version": "0.5",
+                "name": "t",
+                "description": "x",
+                "tool-version": "1.0",
+                "command-line": "tool [X]",
+                "inputs": [{"id": "x", "name": "X", "type": "String", "value-key": "[X]"}],
+            }
+        )
+    )
+
+    result = CliRunner().invoke(
+        app,
+        ["exec", "launch", str(descriptor_path), '{"x": "v"}', "--no-pull"],
+    )
+    assert result.exit_code == 2
     combined = (result.stdout or "") + (result.stderr or "")
-    assert "not both" in combined
+    assert "not implemented" in combined
+    assert "issues" in combined
 
 
 def test_unknown_runtime_raises():

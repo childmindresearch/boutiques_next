@@ -529,7 +529,9 @@ def test_cli_simulate_reports_invocation_error_cleanly(tmp_path):
     inv_path = tmp_path / "inv.json"
     inv_path.write_text('{"n": 2.0}')
 
-    result = CliRunner().invoke(app, ["exec", "simulate", str(descriptor_path), str(inv_path)])
+    result = CliRunner().invoke(
+        app, ["exec", "simulate", str(descriptor_path), "-i", str(inv_path)]
+    )
     assert result.exit_code == 1
     combined = (result.stdout or "") + (result.stderr or "")
     assert "Invocation invalid" in combined
