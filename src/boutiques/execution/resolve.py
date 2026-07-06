@@ -32,7 +32,11 @@ import shlex
 from typing import Any
 
 from boutiques.invocation import DISCRIMINATOR_KEY, invocation_model_for
-from boutiques.invocation_check import InvocationValidationError, validate_invocation
+from boutiques.invocation_check import (
+    InvocationValidationError,
+    apply_default_values,
+    validate_invocation,
+)
 from boutiques.loader import AnyDescriptor
 from boutiques.models.v05.inputs import FlagInput
 from boutiques.models.v05_styx.inputs import (
@@ -63,8 +67,11 @@ def _resolve_template(
     inputs: list[Any] | None,
     values: dict[str, Any],
 ) -> list[str]:
-    template_tokens = shlex.split(template)
     inputs = inputs or []
+    # Materialize declared defaults at every template level (sub-commands too),
+    # so `bosh exec simulate` shows them, e.g. `--species human`.
+    values = apply_default_values(inputs, values)
+    template_tokens = shlex.split(template)
     out: list[str] = []
     for tok in template_tokens:
         out.extend(_expand_token(tok, inputs, values))

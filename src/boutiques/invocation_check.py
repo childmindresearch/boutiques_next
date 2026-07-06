@@ -40,6 +40,25 @@ class InvocationValidationError(Exception):
         super().__init__("\n".join(str(e) for e in errors) or "Invocation validation failed.")
 
 
+def apply_default_values(
+    inputs: list[Any] | None,
+    invocation: dict[str, Any],
+) -> dict[str, Any]:
+    """Return ``invocation`` with each input's ``default-value`` filled in when unset.
+
+    Mirrors classic ``bosh``'s ``addDefaultValues``: declared defaults are
+    materialized before validation, so an invocation that relies on a
+    default validates the same way classic accepts it. The invocation always
+    wins; only genuinely-omitted inputs inherit their default.
+    """
+    filled = dict(invocation)
+    for inp in inputs or []:
+        default = getattr(inp, "default_value", None)
+        if default is not None and inp.id not in filled:
+            filled[inp.id] = default
+    return filled
+
+
 def validate_invocation(
     descriptor: AnyDescriptor,
     invocation: dict[str, Any],
@@ -47,6 +66,7 @@ def validate_invocation(
     """Validate ``invocation`` against ``descriptor``; return every error found."""
     errors: list[ValidationError] = []
 
+    invocation = apply_default_values(descriptor.inputs, invocation)
     model_cls = invocation_model_for(descriptor)
     try:
         parsed = model_cls.model_validate(invocation)

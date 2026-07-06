@@ -1,60 +1,83 @@
-"""`bosh exec` — simulate or launch a descriptor with an invocation."""
+"""`bosh exec` — simulate or launch a descriptor with an invocation.
+
+The flag surface mirrors classic ``bosh exec`` so existing tooling keeps
+working. Classic options this runtime does not honor yet are still accepted
+by the parser but refuse loudly (see :mod:`boutiques.cli._compat`) instead of
+being silently ignored.
+"""
 
 from __future__ import annotations
 
-import json
 import shlex
 from pathlib import Path
 
 import typer
 
+from boutiques.cli._compat import not_implemented
 from boutiques.execution import launch as _launch
 from boutiques.execution import simulate as _simulate
 from boutiques.execution.runtime.base import RuntimeError_
 from boutiques.invocation_check import InvocationValidationError
-from boutiques.loader import DescriptorLoadError, load
+from boutiques.loader import DescriptorLoadError, load, read_json
 
 exec_app = typer.Typer(
     name="exec",
     help="Simulate or launch a descriptor.",
     no_args_is_help=True,
+    context_settings={"help_option_names": ["-h", "--help"]},
 )
 
 
 @exec_app.command("simulate")
 def simulate(
-    descriptor: str = typer.Argument(..., help="Path or http(s) URL to a Boutiques descriptor."),
-    invocation: Path | None = typer.Argument(
-        None,
-        exists=True,
-        readable=True,
-        help="Invocation JSON file. May also be supplied via --invocation/-i.",
+    descriptor: str = typer.Argument(
+        ..., help="Path, http(s) URL, or JSON string of a Boutiques descriptor."
     ),
-    invocation_flag: Path | None = typer.Option(
+    input_: str | None = typer.Option(
         None,
-        "--invocation",
         "-i",
-        exists=True,
-        readable=True,
-        help="Invocation JSON file (alternative to the positional argument; matches classic bosh).",
+        "--input",
+        help="Invocation as a JSON file path or JSON string.",
+    ),
+    complete: bool = typer.Option(  # accepted for classic compat; currently a no-op
+        False,
+        "-c",
+        "--complete",
+        help="Classic compat: include optional parameters (defaults are always included).",
+    ),
+    json_output: bool = typer.Option(
+        False,
+        "-j",
+        "--json",
+        help="Classic compat: emit the completed invocation as JSON (not implemented yet).",
+    ),
+    sandbox: bool = typer.Option(
+        False,
+        "--sandbox",
+        help="Classic compat: fetch the descriptor from Zenodo's sandbox (not implemented yet).",
     ),
 ) -> None:
     """Resolve a descriptor + invocation into a command-line without running it."""
+    if json_output:
+        not_implemented("--json")
+    if sandbox:
+        not_implemented("--sandbox")
+
     try:
         parsed = load(descriptor)
     except DescriptorLoadError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(1) from exc
 
-    invocation_path = _pick_invocation(invocation, invocation_flag)
-    if invocation_path is None:
+    if input_ is None:
         typer.echo(
-            "Provide an invocation, either positionally or via --invocation/-i.",
+            "Provide an invocation via --input/-i. "
+            "To generate an example invocation, use `bosh example`.",
             err=True,
         )
         raise typer.Exit(1)
 
-    inv = json.loads(invocation_path.read_text())
+    inv = _read_invocation(input_)
     try:
         typer.echo(_simulate(parsed, inv))
     except InvocationValidationError as exc:
@@ -64,12 +87,28 @@ def simulate(
 
 @exec_app.command("launch")
 def launch(
-    descriptor: str = typer.Argument(..., help="Path or http(s) URL to a Boutiques descriptor."),
-    invocation: Path = typer.Argument(..., exists=True, readable=True),
+    descriptor: str = typer.Argument(
+        ..., help="Path, http(s) URL, or JSON string of a Boutiques descriptor."
+    ),
+    invocation: str = typer.Argument(..., help="Invocation as a JSON file path or JSON string."),
+    volumes: list[str] = typer.Option(
+        [],
+        "-v",
+        "--volumes",
+        help="HOST:CONTAINER bind mount, passed to the container runtime. Repeatable.",
+    ),
+    container_opts: list[str] = typer.Option(
+        [],
+        "--container-opts",
+        help=(
+            "Extra arguments passed through to the container runtime; each value is "
+            "shlex-split. Repeatable. Example: --container-opts '--gpus all'."
+        ),
+    ),
     runtime: str = typer.Option(
         "local",
-        "--runtime",
         "-r",
+        "--runtime",
         help="Runtime backend: local, docker, singularity.",
     ),
     cwd: Path = typer.Option(
@@ -77,22 +116,27 @@ def launch(
         "--cwd",
         help="Working directory for the run (also the container mount point).",
     ),
-    runtime_args: str = typer.Option(
-        "",
-        "--runtime-args",
-        help=(
-            "Extra arguments passed through to the container runtime, "
-            "shlex-split. Example: --runtime-args '--gpus all --network host'."
-        ),
+    no_container: bool = typer.Option(
+        False,
+        "--no-container",
+        help="Run on the host with no container (equivalent to -r local).",
     ),
-    volumes: list[str] = typer.Option(
-        [],
-        "--volumes",
-        "-v",
-        help=(
-            "Compat with classic bosh: HOST:CONTAINER bind mount. Repeatable. "
-            "Each pair is appended to the container runtime's argv as '-v <pair>'."
-        ),
+    stream: bool = typer.Option(  # always-on in this runtime; accepted for compat
+        False,
+        "-s",
+        "--stream",
+        help="Classic compat: stream stdout/stderr in real time (always on here).",
+    ),
+    debug: bool = typer.Option(  # accepted for classic compat; currently a no-op
+        False,
+        "-x",
+        "--debug",
+        help="Classic compat: accepted, currently a no-op.",
+    ),
+    skip_data_collection: bool = typer.Option(  # no data collection here; accepted for compat
+        False,
+        "--skip-data-collection",
+        help="Classic compat: this runtime never collects execution data.",
     ),
     force_docker: bool = typer.Option(
         False, "--force-docker", help="Compat: equivalent to '-r docker'."
@@ -107,8 +151,52 @@ def launch(
         "--force-apptainer",
         help="Compat: equivalent to '-r singularity' (Apptainer is selected automatically).",
     ),
+    imagepath: str | None = typer.Option(
+        None,
+        "--imagepath",
+        help="Classic compat: path to a local container image (not implemented yet).",
+    ),
+    user: bool = typer.Option(
+        False,
+        "-u",
+        "--user",
+        help="Classic compat: run the container as the local user (not implemented yet).",
+    ),
+    provenance: str | None = typer.Option(
+        None,
+        "--provenance",
+        help="Classic compat: append JSON to the execution record (not implemented yet).",
+    ),
+    sandbox: bool = typer.Option(
+        False,
+        "--sandbox",
+        help="Classic compat: fetch the descriptor from Zenodo's sandbox (not implemented yet).",
+    ),
+    no_pull: bool = typer.Option(
+        False,
+        "--no-pull",
+        help="Classic compat: do not pull the container image (not implemented yet).",
+    ),
+    no_automounts: bool = typer.Option(
+        False,
+        "--no-automounts",
+        help="Classic compat: disable auto-mounting input files (not implemented yet).",
+    ),
 ) -> None:
     """Launch a descriptor with an invocation under the chosen runtime."""
+    if imagepath is not None:
+        not_implemented("--imagepath")
+    if user:
+        not_implemented("--user")
+    if provenance is not None:
+        not_implemented("--provenance")
+    if sandbox:
+        not_implemented("--sandbox")
+    if no_pull:
+        not_implemented("--no-pull")
+    if no_automounts:
+        not_implemented("--no-automounts")
+
     try:
         parsed = load(descriptor)
     except DescriptorLoadError as exc:
@@ -116,16 +204,20 @@ def launch(
         raise typer.Exit(1) from exc
 
     try:
-        runtime = _resolve_runtime(runtime, force_docker, force_singularity, force_apptainer)
+        runtime = _resolve_runtime(
+            runtime, force_docker, force_singularity, force_apptainer, no_container
+        )
     except ValueError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(1) from exc
 
-    extra_args = shlex.split(runtime_args) if runtime_args else []
+    extra_args: list[str] = []
+    for opt in container_opts:
+        extra_args.extend(shlex.split(opt))
     for vol in volumes:
         extra_args.extend(["-v", vol])
 
-    inv = json.loads(invocation.read_text())
+    inv = _read_invocation(invocation)
     try:
         result = _launch(
             parsed,
@@ -143,32 +235,27 @@ def launch(
         typer.echo(f"Runtime error: {exc}", err=True)
         raise typer.Exit(2) from exc
 
+    typer.echo(f"\n[bosh] command: {shlex.join(result.command)}")
     typer.echo(
-        f"\n[bosh] runtime={result.runtime} "
+        f"[bosh] runtime={result.runtime} "
         f"exit={result.exit_code} "
-        f"duration={result.duration_seconds:.2f}s",
-        err=True,
+        f"duration={result.duration_seconds:.2f}s"
     )
     if result.outputs:
-        typer.echo("[bosh] declared outputs:", err=True)
+        typer.echo("[bosh] declared outputs:")
         for o in result.outputs:
             marker = "OK" if o.exists else "missing"
-            typer.echo(f"  [{marker}] {o.id}: {o.path}", err=True)
+            typer.echo(f"  [{marker}] {o.id}: {o.path}")
     raise typer.Exit(result.exit_code)
 
 
-def _pick_invocation(
-    positional: Path | None,
-    via_flag: Path | None,
-) -> Path | None:
-    """Reconcile the positional and -i ways of passing an invocation."""
-    if positional is not None and via_flag is not None:
-        typer.echo(
-            "Pass invocation positionally or via --invocation/-i, not both.",
-            err=True,
-        )
-        raise typer.Exit(1)
-    return positional if positional is not None else via_flag
+def _read_invocation(source: str) -> dict[str, object]:
+    """Read an invocation from a JSON file path or a JSON string, or abort."""
+    try:
+        return read_json(source)
+    except (OSError, ValueError) as exc:
+        typer.echo(f"Could not read invocation: {exc}", err=True)
+        raise typer.Exit(1) from exc
 
 
 def _resolve_runtime(
@@ -176,23 +263,29 @@ def _resolve_runtime(
     force_docker: bool,
     force_singularity: bool,
     force_apptainer: bool,
+    no_container: bool,
 ) -> str:
-    """Reconcile -r with classic bosh's --force-* compatibility flags."""
-    force = [
-        ("docker", force_docker),
-        ("singularity", force_singularity or force_apptainer),
-    ]
-    selected = [name for name, active in force if active]
+    """Reconcile -r with classic bosh's --force-* / --no-container compat flags."""
+    selected: set[str] = set()
+    if force_docker:
+        selected.add("docker")
+    if force_singularity or force_apptainer:
+        selected.add("singularity")
+    if no_container:
+        selected.add("local")
+
     if len(selected) > 1:
         raise ValueError(
-            "Pass at most one of --force-docker, --force-singularity, --force-apptainer."
+            "Pass at most one of --no-container, --force-docker, "
+            "--force-singularity, --force-apptainer."
         )
     if selected:
-        forced = selected[0]
-        # If -r was also explicitly set to a non-default value that conflicts, error.
+        forced = next(iter(selected))
+        # If -r was also explicitly set to a conflicting non-default value, error.
         if runtime != "local" and runtime != forced:
             raise ValueError(
-                f"--force-* selects {forced!r} but -r is set to {runtime!r}; pick one."
+                f"--force-*/--no-container selects {forced!r} but -r is set to "
+                f"{runtime!r}; pick one."
             )
         return forced
     return runtime

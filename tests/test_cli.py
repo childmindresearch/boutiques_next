@@ -34,3 +34,10 @@ def test_validate_fails_for_bad_descriptor(tmp_path):
     bad.write_text('{"schema-version": "0.5"}')  # missing required fields
     result = runner.invoke(app, ["validate", str(bad)])
     assert result.exit_code != 0
+
+
+def test_dash_h_is_accepted_as_help(tmp_path):
+    """Classic bosh accepts -h; Typer only wires --help by default."""
+    for args in (["-h"], ["exec", "-h"], ["exec", "launch", "-h"]):
+        result = runner.invoke(app, args)
+        assert result.exit_code == 0, args
