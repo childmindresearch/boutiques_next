@@ -52,10 +52,10 @@ Wrote invocation-schema into fsl_bet.json
 ## Python equivalent
 
 ```python
-from boutiques import load
+from boutiques.loader import load_descriptor
 from boutiques.invocation_check import validate_invocation
 
-descriptor = load("fsl_bet.json")
+descriptor = load_descriptor("fsl_bet.json")
 errors = validate_invocation(descriptor, {"infile": "/in.nii", "maskfile": "out.nii"})
 if errors:
     for e in errors:

@@ -9,7 +9,7 @@ from boutiques.invocation_check import (
     InvocationValidationError,
     validate_invocation,
 )
-from boutiques.loader import load
+from boutiques.loader import load_descriptor
 
 
 def _make(*, command_line="tool [X]", inputs=None, groups=None):
@@ -24,7 +24,7 @@ def _make(*, command_line="tool [X]", inputs=None, groups=None):
     }
     if groups is not None:
         descriptor["groups"] = groups
-    return load(descriptor)
+    return load_descriptor(descriptor)
 
 
 # ---- Pydantic-level range and list bounds --------------------------------
@@ -372,7 +372,7 @@ def test_all_or_none_partial_violation():
 
 
 def test_requires_inputs_inside_subcommand():
-    d = load(
+    d = load_descriptor(
         {
             "schema-version": "0.5+styx",
             "name": "t",

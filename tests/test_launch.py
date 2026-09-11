@@ -9,12 +9,12 @@ import pytest
 
 from boutiques.execution import launch
 from boutiques.execution.runtime.base import RunResult, RuntimeError_
-from boutiques.loader import load
+from boutiques.loader import load_descriptor
 
 
 def _echo_descriptor():
     """A trivial descriptor that wraps the platform 'echo'-like behavior."""
-    return load(
+    return load_descriptor(
         {
             "schema-version": "0.5",
             "name": "echo_test",
@@ -67,7 +67,7 @@ def test_local_runtime_propagates_exit_code(tmp_path):
 
 
 def _docker_descriptor():
-    return load(
+    return load_descriptor(
         {
             "schema-version": "0.5",
             "name": "in_container",
@@ -110,7 +110,7 @@ def test_docker_runtime_wraps_argv(tmp_path):
 
 
 def test_docker_with_index_prepends_registry(tmp_path):
-    descriptor = load(
+    descriptor = load_descriptor(
         {
             "schema-version": "0.5",
             "name": "x",
@@ -420,7 +420,7 @@ def test_default_value_satisfies_validation_like_classic():
     satisfies a one-is-required group must not be rejected."""
     from boutiques.invocation_check import validate_invocation
 
-    descriptor = load(
+    descriptor = load_descriptor(
         {
             "schema-version": "0.5",
             "name": "t",
@@ -491,7 +491,7 @@ def test_unknown_runtime_raises():
 
 def test_output_paths_resolve_against_cwd(tmp_path):
     """Path-template substitution + existence check (no subprocess)."""
-    descriptor = load(
+    descriptor = load_descriptor(
         {
             "schema-version": "0.5",
             "name": "with_output",
@@ -516,7 +516,7 @@ def test_output_paths_resolve_against_cwd(tmp_path):
 
 def test_environment_variables_are_passed(tmp_path):
     """Env vars declared by the descriptor reach the subprocess."""
-    descriptor = load(
+    descriptor = load_descriptor(
         {
             "schema-version": "0.5",
             "name": "env_check",

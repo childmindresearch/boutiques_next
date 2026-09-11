@@ -220,9 +220,9 @@ For the underlying argv list (instead of the joined string), use the
 Python API:
 
 ```python
-from boutiques import load
+from boutiques.loader import load_descriptor
 from boutiques.execution import resolve
 
-print(resolve(load("descriptor.json"), invocation_dict))
+print(resolve(load_descriptor("descriptor.json"), invocation_dict))
 # ['bet', '/data/in.nii', 'out.nii', '-f', '0.5', '-v']
 ```

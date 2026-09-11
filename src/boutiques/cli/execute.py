@@ -14,12 +14,11 @@ from pathlib import Path
 import typer
 
 from boutiques.cli._compat import not_implemented
-from boutiques.cli._input import read_invocation
+from boutiques.cli._input import load_descriptor_or_exit, load_invocation_or_exit
 from boutiques.execution import launch as _launch
 from boutiques.execution import simulate as _simulate
 from boutiques.execution.runtime.base import RuntimeError_
 from boutiques.invocation_check import InvocationValidationError
-from boutiques.loader import DescriptorLoadError, load
 
 exec_app = typer.Typer(
     name="exec",
@@ -64,11 +63,7 @@ def simulate(
     if sandbox:
         not_implemented("--sandbox")
 
-    try:
-        parsed = load(descriptor)
-    except DescriptorLoadError as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(1) from exc
+    parsed = load_descriptor_or_exit(descriptor)
 
     if input_ is None:
         typer.echo(
@@ -78,7 +73,7 @@ def simulate(
         )
         raise typer.Exit(1)
 
-    inv = read_invocation(input_)
+    inv = load_invocation_or_exit(input_)
     try:
         typer.echo(_simulate(parsed, inv))
     except InvocationValidationError as exc:
@@ -198,11 +193,7 @@ def launch(
     if no_automounts:
         not_implemented("--no-automounts")
 
-    try:
-        parsed = load(descriptor)
-    except DescriptorLoadError as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(1) from exc
+    parsed = load_descriptor_or_exit(descriptor)
 
     try:
         runtime = _resolve_runtime(
@@ -218,7 +209,7 @@ def launch(
     for vol in volumes:
         extra_args.extend(["-v", vol])
 
-    inv = read_invocation(invocation)
+    inv = load_invocation_or_exit(invocation)
     try:
         result = _launch(
             parsed,

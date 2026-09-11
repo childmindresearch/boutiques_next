@@ -9,7 +9,7 @@ import sys
 from typer.testing import CliRunner
 
 from boutiques.cli import app
-from boutiques.loader import load
+from boutiques.loader import load_descriptor
 from boutiques.run_tests import run_tests
 
 runner = CliRunner()
@@ -17,7 +17,7 @@ runner = CliRunner()
 
 def _descriptor_with_tests(tmp_path, tests):
     """A descriptor that runs a tiny python snippet and (optionally) declares an output."""
-    return load(
+    return load_descriptor(
         {
             "schema-version": "0.5",
             "name": "tiny",
@@ -159,7 +159,7 @@ def test_md5_mismatch_reports_diff(tmp_path):
 
 
 def test_descriptor_with_no_tests(tmp_path):
-    d = load(
+    d = load_descriptor(
         {
             "schema-version": "0.5",
             "name": "no_tests",
@@ -235,7 +235,7 @@ def test_cli_reports_failure_and_exits_one(tmp_path):
 
 def test_missing_binary_surfaces_as_test_failure(tmp_path):
     """A test case whose command isn't installed fails just that case, not the run."""
-    d = load(
+    d = load_descriptor(
         {
             "schema-version": "0.5",
             "name": "t",

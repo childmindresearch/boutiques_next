@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from boutiques.lint import lint
-from boutiques.loader import load
+from boutiques.loader import load_descriptor
 from boutiques.models.v05_styx import FileInput
 from boutiques.validate import validate
 
@@ -11,7 +11,7 @@ NIWRAP = FIXTURES / "v05_styx" / "niwrap_style.json"
 
 def test_niwrap_style_descriptor_loads_under_v05_styx():
     """No tool-version, no container-image, uses styx FileInput extensions."""
-    descriptor = load(NIWRAP)
+    descriptor = load_descriptor(NIWRAP)
     assert descriptor.schema_version == "0.5+styx"
     assert descriptor.tool_version is None
     assert descriptor.container_image is None
@@ -22,7 +22,7 @@ def test_niwrap_style_descriptor_loads_under_v05_styx():
 
 
 def test_lint_flags_recommended_fields():
-    descriptor = load(NIWRAP)
+    descriptor = load_descriptor(NIWRAP)
     issues = lint(descriptor)
     fields = {i.field for i in issues}
     assert "tool-version" in fields
@@ -56,5 +56,5 @@ def test_v05_rejects_descriptor_without_tool_version(tmp_path):
 
 def test_lint_clean_when_all_recommended_present():
     """A complete descriptor produces no lint warnings."""
-    complete = load(FIXTURES / "v05" / "fsl_bet.json")
+    complete = load_descriptor(FIXTURES / "v05" / "fsl_bet.json")
     assert lint(complete) == []

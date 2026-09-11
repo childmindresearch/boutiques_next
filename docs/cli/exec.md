@@ -91,10 +91,10 @@ with code `2`.
 ## Python equivalent
 
 ```python
-from boutiques import load
+from boutiques.loader import load_descriptor
 from boutiques.execution import simulate, launch
 
-descriptor = load("fsl_bet.json")
+descriptor = load_descriptor("fsl_bet.json")
 print(simulate(descriptor, invocation))            # str
 result = launch(descriptor, invocation, runtime="docker")
 print(result.exit_code, result.outputs)
