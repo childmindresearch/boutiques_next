@@ -111,6 +111,55 @@ def test_invocation_rejects_invalid_invocation(tmp_path):
     assert "Traceback" not in combined
 
 
+def test_invocation_accepts_inline_json_string():
+    """Classic -i accepts a JSON string, not just a file path."""
+    result = runner.invoke(
+        app,
+        [
+            "invocation",
+            str(FIXTURES / "v05" / "fsl_bet.json"),
+            "-i",
+            json.dumps({"infile": "/data/in.nii", "maskfile": "out.nii"}),
+        ],
+    )
+    assert result.exit_code == 0
+    assert "OK" in result.stdout
+
+
+def test_invocation_rejects_invalid_inline_json_string():
+    result = runner.invoke(
+        app,
+        [
+            "invocation",
+            str(FIXTURES / "v05" / "fsl_bet.json"),
+            "-i",
+            json.dumps(
+                {
+                    "infile": "/data/in.nii",
+                    "maskfile": "out.nii",
+                    "fractional_intensity": 5.0,  # max is 1
+                }
+            ),
+        ],
+    )
+    assert result.exit_code == 1
+    combined = (result.stdout or "") + (result.stderr or "")
+    assert "less than or equal to" in combined
+    assert "Traceback" not in combined
+
+
+def test_invocation_rejects_unparseable_inline_string():
+    """A value that is neither an existing file nor JSON aborts cleanly."""
+    result = runner.invoke(
+        app,
+        ["invocation", str(FIXTURES / "v05" / "fsl_bet.json"), "-i", "not a path or json"],
+    )
+    assert result.exit_code == 1
+    combined = (result.stdout or "") + (result.stderr or "")
+    assert "Could not read invocation" in combined
+    assert "Traceback" not in combined
+
+
 def test_invocation_write_schema_embeds_into_descriptor(tmp_path):
     """-w mutates the descriptor file in place, embedding the schema."""
     descriptor_copy = tmp_path / "descriptor.json"

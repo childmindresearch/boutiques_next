@@ -14,11 +14,12 @@ from pathlib import Path
 import typer
 
 from boutiques.cli._compat import not_implemented
+from boutiques.cli._input import read_invocation
 from boutiques.execution import launch as _launch
 from boutiques.execution import simulate as _simulate
 from boutiques.execution.runtime.base import RuntimeError_
 from boutiques.invocation_check import InvocationValidationError
-from boutiques.loader import DescriptorLoadError, load, read_json
+from boutiques.loader import DescriptorLoadError, load
 
 exec_app = typer.Typer(
     name="exec",
@@ -77,7 +78,7 @@ def simulate(
         )
         raise typer.Exit(1)
 
-    inv = _read_invocation(input_)
+    inv = read_invocation(input_)
     try:
         typer.echo(_simulate(parsed, inv))
     except InvocationValidationError as exc:
@@ -217,7 +218,7 @@ def launch(
     for vol in volumes:
         extra_args.extend(["-v", vol])
 
-    inv = _read_invocation(invocation)
+    inv = read_invocation(invocation)
     try:
         result = _launch(
             parsed,
@@ -247,15 +248,6 @@ def launch(
             marker = "OK" if o.exists else "missing"
             typer.echo(f"  [{marker}] {o.id}: {o.path}")
     raise typer.Exit(result.exit_code)
-
-
-def _read_invocation(source: str) -> dict[str, object]:
-    """Read an invocation from a JSON file path or a JSON string, or abort."""
-    try:
-        return read_json(source)
-    except (OSError, ValueError) as exc:
-        typer.echo(f"Could not read invocation: {exc}", err=True)
-        raise typer.Exit(1) from exc
 
 
 def _resolve_runtime(
