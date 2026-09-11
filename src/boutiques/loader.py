@@ -48,7 +48,7 @@ def load(source: str | Path | dict[str, Any]) -> AnyDescriptor:
     The ``schema-version`` field selects the model. Unknown versions raise
     ``DescriptorLoadError``.
     """
-    data = _read(source)
+    data = read_data(source)
     version = data.get("schema-version")
     if version not in _SCHEMA_MODELS:
         known = ", ".join(sorted(_SCHEMA_MODELS))
@@ -62,18 +62,13 @@ def load(source: str | Path | dict[str, Any]) -> AnyDescriptor:
         raise DescriptorLoadError(str(exc)) from exc
 
 
-def read_json(source: str | Path | dict[str, Any]) -> dict[str, Any]:
-    """Read a JSON object from a dict, file path, http(s) URL, or JSON string.
+def read_data(source: str | Path | dict[str, Any]) -> dict[str, Any]:
+    """Read raw JSON data from a dict, file path, http(s) URL, or JSON string.
 
-    Shares :func:`load`'s input-shape handling, but skips the descriptor
-    schema-version dispatch. Used for invocations, which are plain JSON.
-    Classic ``bosh`` accepts an invocation as a path *or* a JSON string;
-    this preserves that.
+    The shared ingestion for descriptors (:func:`load`, which then dispatches
+    on ``schema-version``) and invocations (plain JSON). Classic ``bosh``
+    accepts an invocation as a path *or* a JSON string; this preserves that.
     """
-    return _read(source)
-
-
-def _read(source: str | Path | dict[str, Any]) -> dict[str, Any]:
     if isinstance(source, dict):
         return source
     if isinstance(source, Path):
