@@ -11,9 +11,19 @@ from boutiques.loader import load
 
 
 def _fake_run(captured: dict):
-    def _impl(argv, **kwargs):
-        captured["argv"] = argv
-        return RunResult(exit_code=0, stdout="", stderr="", duration_seconds=0.0)
+    def _impl(base_command, **kwargs):
+        wrapper = kwargs.get("wrapper")
+        command = wrapper + base_command if wrapper else base_command
+        captured["argv"] = command
+        return RunResult(
+            exit_code=0,
+            stdout="",
+            stderr="",
+            duration_seconds=0.0,
+            base_command=base_command,
+            wrapper=wrapper,
+            command=command,
+        )
 
     return _impl
 
