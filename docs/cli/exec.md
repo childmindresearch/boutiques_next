@@ -68,7 +68,7 @@ Mask: out.nii.gz
 ...
 [bosh] command: bet /data/input.nii output.nii -f 0.5 -v
 [bosh] wrapper: docker run --rm -v /data:/data -w /data neurodebian:latest
-[bosh] runtime=docker exit=0 duration=2.13s
+[bosh] exit=0 duration=2.13s
 [bosh] declared outputs:
   [OK] mask_file: /work/out.nii.gz
 ```
