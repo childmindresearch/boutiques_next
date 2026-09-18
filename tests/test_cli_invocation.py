@@ -10,7 +10,7 @@ from typer.testing import CliRunner
 
 from boutiques.cli import app
 from boutiques.invocation import invocation_schema
-from boutiques.loader import load
+from boutiques.loader import load_descriptor
 
 FIXTURES = Path(__file__).parent / "fixtures"
 runner = CliRunner()
@@ -20,7 +20,7 @@ runner = CliRunner()
 
 
 def test_library_invocation_schema_for_simple_descriptor():
-    descriptor = load(FIXTURES / "v05" / "fsl_bet.json")
+    descriptor = load_descriptor(FIXTURES / "v05" / "fsl_bet.json")
     schema = invocation_schema(descriptor)
     assert schema["additionalProperties"] is False
     assert schema["properties"]["infile"]["type"] == "string"
@@ -33,7 +33,7 @@ def test_library_invocation_schema_for_simple_descriptor():
 
 
 def test_library_invocation_schema_subcommand_union_uses_oneof():
-    descriptor = load(FIXTURES / "v05_styx" / "subcommand_union.json")
+    descriptor = load_descriptor(FIXTURES / "v05_styx" / "subcommand_union.json")
     schema = invocation_schema(descriptor)
     op = schema["properties"]["op"]
     assert "oneOf" in op or "discriminator" in op
@@ -111,6 +111,33 @@ def test_invocation_rejects_invalid_invocation(tmp_path):
     assert "Traceback" not in combined
 
 
+def test_invocation_accepts_inline_json_string():
+    """Classic -i accepts a JSON string, not just a file path."""
+    result = runner.invoke(
+        app,
+        [
+            "invocation",
+            str(FIXTURES / "v05" / "fsl_bet.json"),
+            "-i",
+            json.dumps({"infile": "/data/in.nii", "maskfile": "out.nii"}),
+        ],
+    )
+    assert result.exit_code == 0
+    assert "OK" in result.stdout
+
+
+def test_invocation_rejects_unparseable_inline_string():
+    """A value that is neither an existing file nor JSON aborts cleanly."""
+    result = runner.invoke(
+        app,
+        ["invocation", str(FIXTURES / "v05" / "fsl_bet.json"), "-i", "not a path or json"],
+    )
+    assert result.exit_code == 1
+    combined = (result.stdout or "") + (result.stderr or "")
+    assert "Could not read invocation" in combined
+    assert "Traceback" not in combined
+
+
 def test_invocation_write_schema_embeds_into_descriptor(tmp_path):
     """-w mutates the descriptor file in place, embedding the schema."""
     descriptor_copy = tmp_path / "descriptor.json"
@@ -125,7 +152,7 @@ def test_invocation_write_schema_embeds_into_descriptor(tmp_path):
     assert "invocation-schema" in updated
     assert "properties" in updated["invocation-schema"]
     # Descriptor still loads under our model after the embed.
-    re_loaded = load(descriptor_copy)
+    re_loaded = load_descriptor(descriptor_copy)
     assert re_loaded.name == "fsl_bet"
 
 

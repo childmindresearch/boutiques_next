@@ -17,9 +17,9 @@ from pathlib import Path
 
 import typer
 
+from boutiques.cli._input import load_descriptor_or_exit, load_invocation_or_exit
 from boutiques.invocation import invocation_schema
 from boutiques.invocation_check import validate_invocation
-from boutiques.loader import DescriptorLoadError, load
 
 
 def register(app: typer.Typer) -> None:
@@ -28,13 +28,11 @@ def register(app: typer.Typer) -> None:
         descriptor: str = typer.Argument(
             ..., help="Path or http(s) URL to a Boutiques descriptor."
         ),
-        invocation_file: Path | None = typer.Option(
+        invocation_file: str | None = typer.Option(
             None,
             "--invocation",
             "-i",
-            exists=True,
-            readable=True,
-            help="Validate this invocation against the descriptor's schema.",
+            help="Invocation as a JSON file path or JSON string.",
         ),
         write_schema: bool = typer.Option(
             False,
@@ -54,14 +52,10 @@ def register(app: typer.Typer) -> None:
         With ``-w``, writes the schema back into the descriptor under its
         ``invocation-schema`` field.
         """
-        try:
-            parsed = load(descriptor)
-        except DescriptorLoadError as exc:
-            typer.echo(str(exc), err=True)
-            raise typer.Exit(1) from exc
+        parsed = load_descriptor_or_exit(descriptor)
 
         if invocation_file is not None:
-            inv_data = json.loads(invocation_file.read_text())
+            inv_data = load_invocation_or_exit(invocation_file)
             errors = validate_invocation(parsed, inv_data)
             if errors:
                 for err in errors:
@@ -108,11 +102,7 @@ def register(app: typer.Typer) -> None:
         required fields, types, value-choices, numeric ranges, list bounds,
         and sub-command unions.
         """
-        try:
-            parsed = load(descriptor)
-        except DescriptorLoadError as exc:
-            typer.echo(str(exc), err=True)
-            raise typer.Exit(1) from exc
+        parsed = load_descriptor_or_exit(descriptor)
 
         schema = invocation_schema(parsed)
         rendered = json.dumps(schema, indent=2)

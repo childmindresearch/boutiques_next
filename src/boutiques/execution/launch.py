@@ -18,6 +18,7 @@ from boutiques.execution.runtime import local as _local
 from boutiques.execution.runtime import singularity as _singularity
 from boutiques.execution.runtime.base import RunResult, RuntimeError_
 from boutiques.loader import AnyDescriptor
+from boutiques.models.v05.containers import RootfsImage
 
 _RUNTIMES = {
     "local": _local,
@@ -48,14 +49,27 @@ def launch(
     runtime_args: list[str] | None = None,
     stream: bool = True,
     capture: bool = True,
+    image_path: Path | None = None,
+    no_pull: bool = False,
+    no_automounts: bool = False,
 ) -> LaunchResult:
     """Resolve the invocation and run the tool under the chosen runtime."""
     if runtime not in _RUNTIMES:
         raise RuntimeError_(f"Unknown runtime {runtime!r}. Known: {', '.join(sorted(_RUNTIMES))}.")
+    if image_path is not None:
+        if runtime != "singularity":
+            raise RuntimeError_(
+                f"--imagepath only applies to the singularity runtime (runtime={runtime!r})."
+            )
+        if isinstance(descriptor.container_image, RootfsImage):
+            raise RuntimeError_(
+                "--imagepath cannot override a rootfs container-image, which already "
+                "points at a URL."
+            )
     argv = resolve(descriptor, invocation)
     env = _env_for(descriptor)
     work_dir = (cwd or Path.cwd()).resolve()
-    mounts = _plan_mounts(descriptor, invocation, work_dir)
+    mounts = _plan_mounts(descriptor, invocation, work_dir, no_automounts)
 
     backend = _RUNTIMES[runtime]
     run_result: RunResult = backend.run(
@@ -67,6 +81,8 @@ def launch(
         runtime_args=runtime_args or [],
         stream=stream,
         capture=capture,
+        image_path=image_path,
+        no_pull=no_pull,
     )
 
     outputs = resolve_output_paths(descriptor, invocation, work_dir)
@@ -86,8 +102,15 @@ def _plan_mounts(
     descriptor: AnyDescriptor,
     invocation: dict[str, Any],
     work_dir: Path,
+    no_automounts: bool = False,
 ) -> list[Path]:
-    """Combine the working directory with file-input parent dirs, deduped."""
+    """Combine the working directory with file-input parent dirs, deduped.
+
+    The working directory is always mounted; file-input mounts are skipped
+    when ``no_automounts`` is set.
+    """
+    if no_automounts:
+        return [work_dir]
     raw = {work_dir, *collect_file_mounts(descriptor, invocation)}
     # Re-dedupe the union so work_dir absorbs any nested file mounts.
     from boutiques.execution.mounts import _dedupe_descendants

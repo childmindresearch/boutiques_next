@@ -6,8 +6,8 @@ import json
 
 import typer
 
+from boutiques.cli._input import load_descriptor_or_exit
 from boutiques.example import generate
-from boutiques.loader import DescriptorLoadError, load
 
 
 def register(app: typer.Typer) -> None:
@@ -24,10 +24,6 @@ def register(app: typer.Typer) -> None:
         ),
     ) -> None:
         """Generate a sample invocation for a descriptor."""
-        try:
-            parsed = load(descriptor)
-        except DescriptorLoadError as exc:
-            typer.echo(str(exc), err=True)
-            raise typer.Exit(1) from exc
+        parsed = load_descriptor_or_exit(descriptor)
         invocation = generate(parsed, complete=complete)
         typer.echo(json.dumps(invocation, indent=2))

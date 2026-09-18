@@ -1,15 +1,4 @@
-"""Load descriptors from disk, URL, dict, or JSON string.
-
-The loader dispatches on ``schema-version`` and accepts four input forms:
-
-- ``dict`` — already-parsed JSON
-- ``Path`` — file on disk
-- ``str`` — tried in order: existing path on disk, http(s) URL, raw JSON
-
-URLs use the standard library (``urllib.request``) — no extra deps. The
-loader auto-rewrites GitHub blob URLs to their raw equivalents so users
-can paste links straight from the browser.
-"""
+"""Load descriptors and invocations."""
 
 from __future__ import annotations
 
@@ -42,13 +31,13 @@ class DescriptorLoadError(Exception):
     """Raised when a descriptor cannot be parsed or its schema-version is unknown."""
 
 
-def load(source: str | Path | dict[str, Any]) -> AnyDescriptor:
-    """Load a descriptor from a file path, URL, dict, or JSON string.
+def load_descriptor(source: str | Path | dict[str, Any]) -> AnyDescriptor:
+    """Load a descriptor from a file path, dict, JSON string, or URL.
 
     The ``schema-version`` field selects the model. Unknown versions raise
     ``DescriptorLoadError``.
     """
-    data = _read(source)
+    data = _read_data(source, allow_url=True)
     version = data.get("schema-version")
     if version not in _SCHEMA_MODELS:
         known = ", ".join(sorted(_SCHEMA_MODELS))
@@ -62,18 +51,13 @@ def load(source: str | Path | dict[str, Any]) -> AnyDescriptor:
         raise DescriptorLoadError(str(exc)) from exc
 
 
-def read_json(source: str | Path | dict[str, Any]) -> dict[str, Any]:
-    """Read a JSON object from a dict, file path, http(s) URL, or JSON string.
-
-    Shares :func:`load`'s input-shape handling, but skips the descriptor
-    schema-version dispatch. Used for invocations, which are plain JSON.
-    Classic ``bosh`` accepts an invocation as a path *or* a JSON string;
-    this preserves that.
-    """
-    return _read(source)
+def load_invocation(source: str | Path | dict[str, Any]) -> dict[str, Any]:
+    """Read a plain-JSON invocation from a file path, dict, or JSON string."""
+    return _read_data(source, allow_url=False)
 
 
-def _read(source: str | Path | dict[str, Any]) -> dict[str, Any]:
+def _read_data(source: str | Path | dict[str, Any], *, allow_url: bool) -> dict[str, Any]:
+    """Read raw JSON from a file path, dict, JSON string, or (optionally) URL."""
     if isinstance(source, dict):
         return source
     if isinstance(source, Path):
@@ -84,7 +68,7 @@ def _read(source: str | Path | dict[str, Any]) -> dict[str, Any]:
     stripped = source.lstrip()
     if stripped.startswith(("{", "[")):
         return cast(dict[str, Any], json.loads(source))
-    if _looks_like_url(source):
+    if allow_url and _looks_like_url(source):
         return _fetch_url(source)
     try:
         as_path = Path(source)

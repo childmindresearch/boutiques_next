@@ -14,11 +14,11 @@ from pathlib import Path
 import typer
 
 from boutiques.cli._compat import not_implemented
+from boutiques.cli._input import load_descriptor_or_exit, load_invocation_or_exit
 from boutiques.execution import launch as _launch
 from boutiques.execution import simulate as _simulate
 from boutiques.execution.runtime.base import RuntimeError_
 from boutiques.invocation_check import InvocationValidationError
-from boutiques.loader import DescriptorLoadError, load, read_json
 
 exec_app = typer.Typer(
     name="exec",
@@ -63,11 +63,7 @@ def simulate(
     if sandbox:
         not_implemented("--sandbox")
 
-    try:
-        parsed = load(descriptor)
-    except DescriptorLoadError as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(1) from exc
+    parsed = load_descriptor_or_exit(descriptor)
 
     if input_ is None:
         typer.echo(
@@ -77,7 +73,7 @@ def simulate(
         )
         raise typer.Exit(1)
 
-    inv = _read_invocation(input_)
+    inv = load_invocation_or_exit(input_)
     try:
         typer.echo(_simulate(parsed, inv))
     except InvocationValidationError as exc:
@@ -154,7 +150,7 @@ def launch(
     imagepath: str | None = typer.Option(
         None,
         "--imagepath",
-        help="Classic compat: path to a local container image (not implemented yet).",
+        help=("Path to a local container image (singularity only; pulled into place if missing)."),
     ),
     user: bool = typer.Option(
         False,
@@ -175,33 +171,26 @@ def launch(
     no_pull: bool = typer.Option(
         False,
         "--no-pull",
-        help="Classic compat: do not pull the container image (not implemented yet).",
+        help=(
+            "Do not pull the container image: docker passes --pull=never; "
+            "singularity refuses remote images unless --imagepath points at a local file."
+        ),
     ),
     no_automounts: bool = typer.Option(
         False,
         "--no-automounts",
-        help="Classic compat: disable auto-mounting input files (not implemented yet).",
+        help="Disable automatic mount of all input files present in the invocation.",
     ),
 ) -> None:
     """Launch a descriptor with an invocation under the chosen runtime."""
-    if imagepath is not None:
-        not_implemented("--imagepath")
     if user:
         not_implemented("--user")
     if provenance is not None:
         not_implemented("--provenance")
     if sandbox:
         not_implemented("--sandbox")
-    if no_pull:
-        not_implemented("--no-pull")
-    if no_automounts:
-        not_implemented("--no-automounts")
 
-    try:
-        parsed = load(descriptor)
-    except DescriptorLoadError as exc:
-        typer.echo(str(exc), err=True)
-        raise typer.Exit(1) from exc
+    parsed = load_descriptor_or_exit(descriptor)
 
     try:
         runtime = _resolve_runtime(
@@ -217,7 +206,7 @@ def launch(
     for vol in volumes:
         extra_args.extend(["-v", vol])
 
-    inv = _read_invocation(invocation)
+    inv = load_invocation_or_exit(invocation)
     try:
         result = _launch(
             parsed,
@@ -227,6 +216,9 @@ def launch(
             runtime_args=extra_args,
             stream=True,
             capture=False,  # output already streamed; don't buffer twice
+            image_path=Path(imagepath).resolve() if imagepath else None,
+            no_pull=no_pull,
+            no_automounts=no_automounts,
         )
     except InvocationValidationError as exc:
         typer.echo(f"Invocation invalid:\n{exc}", err=True)
@@ -247,15 +239,6 @@ def launch(
             marker = "OK" if o.exists else "missing"
             typer.echo(f"  [{marker}] {o.id}: {o.path}")
     raise typer.Exit(result.exit_code)
-
-
-def _read_invocation(source: str) -> dict[str, object]:
-    """Read an invocation from a JSON file path or a JSON string, or abort."""
-    try:
-        return read_json(source)
-    except (OSError, ValueError) as exc:
-        typer.echo(f"Could not read invocation: {exc}", err=True)
-        raise typer.Exit(1) from exc
 
 
 def _resolve_runtime(

@@ -9,7 +9,8 @@ oddly, it's a hint to improve the docstring in source.
 
 | Task | Function |
 | --- | --- |
-| Parse a descriptor (path / URL / dict / JSON) | [`load`](#boutiques.loader.load) |
+| Parse a descriptor (path / URL / dict / JSON) | [`load_descriptor`](#boutiques.loader.load_descriptor) |
+| Read an invocation (file / dict / JSON string) | [`load_invocation`](#boutiques.loader.load_invocation) |
 | Validate (structural + semantic + lint) | [`validate`](#boutiques.validate.validate) |
 | Generate a sample invocation | [`generate`](#boutiques.example.generate) |
 | Resolve to argv | [`resolve`](#boutiques.execution.resolve.resolve) |
@@ -23,7 +24,8 @@ oddly, it's a hint to improve the docstring in source.
 
 ## Loading
 
-::: boutiques.loader.load
+::: boutiques.loader.load_descriptor
+::: boutiques.loader.load_invocation
 ::: boutiques.loader.DescriptorLoadError
 
 ## Validation
@@ -87,7 +89,7 @@ oddly, it's a hint to improve the docstring in source.
 ## Descriptor models
 
 Pydantic models live under `boutiques.models.v05` and
-`boutiques.models.v05_styx`. For day-to-day use, [`load`](#boutiques.loader.load)
+`boutiques.models.v05_styx`. For day-to-day use, [`load_descriptor`](#boutiques.loader.load_descriptor)
 returns the right one based on the descriptor's `schema-version`; the
 models themselves are documented mostly via the
 [specification](../spec/index.md). The JSON Schema artifacts under
