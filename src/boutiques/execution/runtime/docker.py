@@ -40,9 +40,8 @@ def run(
     if isinstance(container_image, DockerOrSingularityImage) and container_image.container_opts:
         wrapper.extend(container_image.container_opts)
     wrapper.append(image_ref)
-    wrapper.extend(argv)
 
-    return run_subprocess(wrapper, stream=stream, capture=capture)
+    return run_subprocess(argv, wrapper=wrapper, stream=stream, capture=capture)
 
 
 def _image_ref(container_image: object) -> str:

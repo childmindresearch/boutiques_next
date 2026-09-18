@@ -21,25 +21,28 @@ from boutiques.execution.runtime.base import RunResult, RuntimeError_
 
 
 def run_subprocess(
-    argv: list[str],
+    base_command: list[str],
     *,
+    wrapper: list[str] | None = None,
     env: dict[str, str] | None = None,
     cwd: Path | None = None,
     stream: bool = True,
     capture: bool = True,
 ) -> RunResult:
-    """Run ``argv`` as a subprocess; stream and/or capture its output.
+    """Run ``base_command`` (optionally preceded by a ``wrapper`` prefix) as a
+    subprocess; stream and/or capture its output.
 
-    The two threads drain stdout/stderr independently, so neither pipe
-    can deadlock on a full kernel buffer. If the executable cannot be
-    found, a :class:`RuntimeError_` is raised with the offending argv[0]
-    so callers can surface a clean message instead of a Python traceback.
+    If the executable cannot be
+    found, a :class:`RuntimeError_` is raised with the offending
+    executable so callers can surface a clean message instead of a
+    Python traceback.
     """
+    command = wrapper + base_command if wrapper else base_command
     full_env = {**os.environ, **(env or {})} if env is not None else None
 
     try:
         proc = subprocess.Popen(
-            argv,
+            command,
             env=full_env,
             cwd=str(cwd) if cwd is not None else None,
             stdout=subprocess.PIPE,
@@ -48,7 +51,7 @@ def run_subprocess(
             bufsize=1,  # line-buffered
         )
     except FileNotFoundError as exc:
-        executable = argv[0] if argv else "<empty argv>"
+        executable = command[0] if command else "<empty command>"
         raise RuntimeError_(
             f"Command not found: {executable!r}. Is it installed and on PATH?"
         ) from exc
@@ -58,11 +61,19 @@ def run_subprocess(
 
     out_thread = threading.Thread(
         target=_drain,
-        args=(proc.stdout, sys.stdout if stream else None, stdout_buf if capture else None),
+        args=(
+            proc.stdout,
+            sys.stdout if stream else None,
+            stdout_buf if capture else None,
+        ),
     )
     err_thread = threading.Thread(
         target=_drain,
-        args=(proc.stderr, sys.stderr if stream else None, stderr_buf if capture else None),
+        args=(
+            proc.stderr,
+            sys.stderr if stream else None,
+            stderr_buf if capture else None,
+        ),
     )
 
     start = time.monotonic()
@@ -78,6 +89,9 @@ def run_subprocess(
         stdout="".join(stdout_buf),
         stderr="".join(stderr_buf),
         duration_seconds=duration,
+        base_command=base_command,
+        wrapper=wrapper,
+        command=command,
     )
 
 

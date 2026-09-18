@@ -57,7 +57,8 @@ def test_local_runtime_runs_real_subprocess(tmp_path):
     assert result.exit_code == 0
     assert "hi from boutiques" in result.stdout
     assert result.runtime == "local"
-    assert result.command[0] == sys.executable
+    assert result.base_command[0] == sys.executable
+    assert result.wrapper is None
 
 
 def test_local_runtime_propagates_exit_code(tmp_path):
@@ -109,12 +110,23 @@ def _file_descriptor():
 
 
 def _fake_run_subprocess(captured: dict):
-    """A run_subprocess stand-in that records its argv and returns success."""
+    """A run_subprocess stand-in that records the spawned command and succeeds."""
 
-    def _impl(argv, **kwargs):
-        captured["argv"] = argv
-        captured["kwargs"] = kwargs
-        return RunResult(exit_code=0, stdout="", stderr="", duration_seconds=0.0)
+    def _impl(base_command, **kwargs):
+        wrapper = kwargs.get("wrapper")
+        command = wrapper + base_command if wrapper else base_command
+        captured["argv"] = command
+        captured["base_command"] = base_command
+        captured["wrapper"] = wrapper
+        return RunResult(
+            exit_code=0,
+            stdout="",
+            stderr="",
+            duration_seconds=0.0,
+            base_command=base_command,
+            wrapper=wrapper,
+            command=command,
+        )
 
     return _impl
 
@@ -125,7 +137,7 @@ def test_docker_runtime_wraps_argv(tmp_path):
         "boutiques.execution.runtime.docker.run_subprocess",
         side_effect=_fake_run_subprocess(captured),
     ):
-        launch(_docker_descriptor(), {"x": "hello"}, runtime="docker", cwd=tmp_path)
+        result = launch(_docker_descriptor(), {"x": "hello"}, runtime="docker", cwd=tmp_path)
 
     argv = captured["argv"]
     assert argv[:3] == ["docker", "run", "--rm"]
@@ -133,6 +145,9 @@ def test_docker_runtime_wraps_argv(tmp_path):
     assert "example/tool" in argv
     image_idx = argv.index("example/tool")
     assert argv[image_idx + 1 :] == ["do_thing", "hello"]
+    assert result.base_command == ["do_thing", "hello"]
+    assert result.wrapper == argv[: image_idx + 1]
+    assert result.wrapper is not None
 
 
 def test_docker_with_index_prepends_registry(tmp_path):
@@ -308,13 +323,23 @@ def test_singularity_auto_pulls_missing_imagepath(tmp_path):
     pull_argv: list[list[str]] = []
     exec_captured: dict = {}
 
-    def fake_run(argv, **kwargs):
-        if argv[1] == "pull":
-            pull_argv.append(argv)
+    def fake_run(base_command, **kwargs):
+        wrapper = kwargs.get("wrapper")
+        command = wrapper + base_command if wrapper else base_command
+        if base_command[1] == "pull":
+            pull_argv.append(base_command)
             img.write_bytes(b"")
-            return RunResult(exit_code=0, stdout="", stderr="", duration_seconds=0.0)
-        exec_captured["argv"] = argv
-        return RunResult(exit_code=0, stdout="", stderr="", duration_seconds=0.0)
+        else:
+            exec_captured["argv"] = command
+        return RunResult(
+            exit_code=0,
+            stdout="",
+            stderr="",
+            duration_seconds=0.0,
+            base_command=base_command,
+            wrapper=wrapper,
+            command=command,
+        )
 
     with (
         patch(
@@ -596,9 +621,21 @@ def test_cli_force_docker_aliases_runtime(tmp_path):
 
     captured: dict = {}
 
-    def fake_run(argv, **kwargs):
-        captured["argv"] = argv
-        return RunResult(exit_code=0, stdout="", stderr="", duration_seconds=0.0)
+    def fake_run(base_command, **kwargs):
+        wrapper = kwargs.get("wrapper")
+        command = wrapper + base_command if wrapper else base_command
+        captured["argv"] = command
+        captured["base_command"] = base_command
+        captured["wrapper"] = wrapper
+        return RunResult(
+            exit_code=0,
+            stdout="",
+            stderr="",
+            duration_seconds=0.0,
+            base_command=base_command,
+            wrapper=wrapper,
+            command=command,
+        )
 
     with patch("boutiques.execution.runtime.docker.run_subprocess", side_effect=fake_run):
         result = CliRunner().invoke(
@@ -621,6 +658,47 @@ def test_cli_force_docker_aliases_runtime(tmp_path):
     assert argv[0] == "docker"
     for pair in ("/a:/b", "/c:/d"):
         assert pair in argv
+    combined = (result.stdout or "") + (result.stderr or "")
+    assert "[bosh] command: tool v" in combined
+    assert "[bosh] wrapper:" in combined
+    assert "docker run --rm" in combined
+    assert "example/tool" in combined
+
+
+def test_cli_local_launch_prints_command_with_no_wrapper(tmp_path):
+    """Local runtime prints the command but no wrapper line."""
+    import json
+
+    from typer.testing import CliRunner
+
+    from boutiques.cli import app
+
+    descriptor_path = tmp_path / "descriptor.json"
+    descriptor_path.write_text(
+        json.dumps(
+            {
+                "schema-version": "0.5",
+                "name": "t",
+                "description": "x",
+                "tool-version": "1.0",
+                "command-line": "[PYTHON] -c [SCRIPT]",
+                "inputs": [
+                    {"id": "python", "name": "P", "type": "String", "value-key": "[PYTHON]"},
+                    {"id": "script", "name": "S", "type": "String", "value-key": "[SCRIPT]"},
+                ],
+            }
+        )
+    )
+    inv_path = tmp_path / "inv.json"
+    inv_path.write_text(json.dumps({"python": sys.executable, "script": "pass"}))
+
+    result = CliRunner().invoke(
+        app, ["exec", "launch", str(descriptor_path), str(inv_path), "--cwd", str(tmp_path)]
+    )
+    assert result.exit_code == 0
+    combined = (result.stdout or "") + (result.stderr or "")
+    assert "[bosh] command:" in combined
+    assert "[bosh] wrapper:" not in combined
 
 
 def test_cli_force_multiple_runtimes_errors(tmp_path):

@@ -31,12 +31,13 @@ _RUNTIMES = {
 class LaunchResult:
     """Outcome of a launch: what was run, what came back, what was declared."""
 
-    command: list[str]
+    base_command: list[str]
     runtime: str
     exit_code: int
     stdout: str
     stderr: str
     duration_seconds: float
+    wrapper: list[str] | None = None
     outputs: list[ResolvedOutput] = field(default_factory=list)
 
 
@@ -88,12 +89,13 @@ def launch(
     outputs = resolve_output_paths(descriptor, invocation, work_dir)
     outputs.extend(resolve_stdio_outputs(descriptor, run_result.stdout, run_result.stderr))
     return LaunchResult(
-        command=argv,
+        base_command=argv,
         runtime=runtime,
         exit_code=run_result.exit_code,
         stdout=run_result.stdout,
         stderr=run_result.stderr,
         duration_seconds=run_result.duration_seconds,
+        wrapper=run_result.wrapper,
         outputs=outputs,
     )
 

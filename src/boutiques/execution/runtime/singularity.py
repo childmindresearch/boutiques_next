@@ -40,9 +40,8 @@ def run(
     if runtime_args:
         wrapper.extend(runtime_args)
     wrapper.append(image_arg)
-    wrapper.extend(argv)
 
-    return run_subprocess(wrapper, stream=stream, capture=capture)
+    return run_subprocess(argv, wrapper=wrapper, stream=stream, capture=capture)
 
 
 def _resolve_image_arg(

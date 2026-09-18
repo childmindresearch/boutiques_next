@@ -227,12 +227,10 @@ def launch(
         typer.echo(f"Runtime error: {exc}", err=True)
         raise typer.Exit(2) from exc
 
-    typer.echo(f"\n[bosh] command: {shlex.join(result.command)}")
-    typer.echo(
-        f"[bosh] runtime={result.runtime} "
-        f"exit={result.exit_code} "
-        f"duration={result.duration_seconds:.2f}s"
-    )
+    typer.echo(f"\n[bosh] command: {shlex.join(result.base_command)}")
+    if result.wrapper is not None:
+        typer.echo(f"[bosh] wrapper: {shlex.join(result.wrapper)}")
+    typer.echo(f"[bosh] exit={result.exit_code} duration={result.duration_seconds:.2f}s")
     if result.outputs:
         typer.echo("[bosh] declared outputs:")
         for o in result.outputs:

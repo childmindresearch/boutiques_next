@@ -71,10 +71,16 @@ $ bosh exec launch fsl_bet.json invocation.json -r docker
 bet 1.0.0 (...)
 Mask: out.nii.gz
 ...
-[bosh] runtime=docker exit=0 duration=2.13s
+[bosh] command: bet /data/input.nii output.nii -f 0.5 -v
+[bosh] wrapper: docker run --rm -v /data:/data -w /data neurodebian:latest
+[bosh] exit=0 duration=2.13s
 [bosh] declared outputs:
   [OK] mask_file: /work/out.nii.gz
 ```
+
+The `[bosh] command:` line is the resolved tool command; the optional
+`[bosh] wrapper:` line is the container-runtime prefix (printed only
+for container runtimes).
 
 ### Runtime arguments pass-through
 
