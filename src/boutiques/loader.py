@@ -56,9 +56,7 @@ def load_invocation(source: str | Path | dict[str, Any]) -> dict[str, Any]:
     return _read_data(source, allow_url=False)
 
 
-def _read_data(
-    source: str | Path | dict[str, Any], *, allow_url: bool
-) -> dict[str, Any]:
+def _read_data(source: str | Path | dict[str, Any], *, allow_url: bool) -> dict[str, Any]:
     """Read raw JSON from a file path, dict, JSON string, or (optionally) URL."""
     if isinstance(source, dict):
         return source
@@ -98,9 +96,7 @@ def _fetch_url(url: str) -> dict[str, Any]:
     try:
         return cast(dict[str, Any], json.loads(payload))
     except json.JSONDecodeError as exc:
-        raise DescriptorLoadError(
-            f"Response from {url} is not valid JSON: {exc.msg}"
-        ) from exc
+        raise DescriptorLoadError(f"Response from {url} is not valid JSON: {exc.msg}") from exc
 
 
 def _normalize_github_url(url: str) -> str:

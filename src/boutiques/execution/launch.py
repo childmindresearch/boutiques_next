@@ -55,9 +55,7 @@ def launch(
 ) -> LaunchResult:
     """Resolve the invocation and run the tool under the chosen runtime."""
     if runtime not in _RUNTIMES:
-        raise RuntimeError_(
-            f"Unknown runtime {runtime!r}. Known: {', '.join(sorted(_RUNTIMES))}."
-        )
+        raise RuntimeError_(f"Unknown runtime {runtime!r}. Known: {', '.join(sorted(_RUNTIMES))}.")
     if image_path is not None:
         if runtime != "singularity":
             raise RuntimeError_(
@@ -88,9 +86,7 @@ def launch(
     )
 
     outputs = resolve_output_paths(descriptor, invocation, work_dir)
-    outputs.extend(
-        resolve_stdio_outputs(descriptor, run_result.stdout, run_result.stderr)
-    )
+    outputs.extend(resolve_stdio_outputs(descriptor, run_result.stdout, run_result.stderr))
     return LaunchResult(
         command=argv,
         runtime=runtime,

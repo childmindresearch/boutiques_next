@@ -73,14 +73,11 @@ def _ensure_image(binary: str, path: Path, pull_uri: str, no_pull: bool) -> str:
             f"{binary} pull {path} {pull_uri}"
         )
     if not path.parent.exists():
-        raise RuntimeError_(
-            f"Cannot pull image: parent directory {path.parent} does not exist."
-        )
+        raise RuntimeError_(f"Cannot pull image: parent directory {path.parent} does not exist.")
     pull = run_subprocess([binary, "pull", str(path), pull_uri])
     if pull.exit_code != 0:
         raise RuntimeError_(
-            f"Failed to pull container image to {path} (exit {pull.exit_code}):\n"
-            f"{pull.stderr}"
+            f"Failed to pull container image to {path} (exit {pull.exit_code}):\n{pull.stderr}"
         )
     if not path.exists():
         raise RuntimeError_(
@@ -104,6 +101,4 @@ def _image_uri(container_image: object) -> str:
         return f"docker://{container_image.image}"
     if isinstance(container_image, RootfsImage):
         return str(container_image.url)
-    raise RuntimeError_(
-        f"Unsupported container-image type: {type(container_image).__name__}"
-    )
+    raise RuntimeError_(f"Unsupported container-image type: {type(container_image).__name__}")
