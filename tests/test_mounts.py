@@ -7,7 +7,7 @@ from unittest.mock import patch
 from boutiques.execution import launch
 from boutiques.execution.mounts import collect_file_mounts
 from boutiques.execution.runtime.base import RunResult
-from boutiques.loader import load
+from boutiques.loader import load_descriptor
 
 
 def _fake_run(captured: dict):
@@ -29,7 +29,7 @@ def _fake_run(captured: dict):
 
 
 def _descriptor_with_files(num_files: int = 2):
-    return load(
+    return load_descriptor(
         {
             "schema-version": "0.5",
             "name": "t",
@@ -75,7 +75,7 @@ def test_collect_file_mounts_dedupes_descendants():
 
 
 def test_collect_file_mounts_handles_list_inputs():
-    descriptor = load(
+    descriptor = load_descriptor(
         {
             "schema-version": "0.5",
             "name": "t",
@@ -101,7 +101,7 @@ def test_collect_file_mounts_handles_list_inputs():
 
 
 def test_collect_file_mounts_recurses_into_subcommand_union():
-    descriptor = load(
+    descriptor = load_descriptor(
         {
             "schema-version": "0.5+styx",
             "name": "t",

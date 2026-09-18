@@ -56,10 +56,10 @@ runtime errors (e.g. docker not installed).
 ## Python equivalent
 
 ```python
-from boutiques import load
+from boutiques.loader import load_descriptor
 from boutiques.run_tests import run_tests
 
-descriptor = load("descriptor.json")
+descriptor = load_descriptor("descriptor.json")
 results = run_tests(descriptor, runtime="docker")
 
 if not results.passed:

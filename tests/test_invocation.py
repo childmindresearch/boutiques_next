@@ -6,14 +6,14 @@ from pydantic import ValidationError
 from boutiques.example import generate
 from boutiques.execution import simulate
 from boutiques.invocation import invocation_model_for
-from boutiques.loader import load
+from boutiques.loader import load_descriptor
 
 FIXTURES = Path(__file__).parent / "fixtures"
 FSL_BET = FIXTURES / "v05" / "fsl_bet.json"
 
 
 def test_invocation_model_validates_minimal_required():
-    descriptor = load(FSL_BET)
+    descriptor = load_descriptor(FSL_BET)
     model = invocation_model_for(descriptor)
     inv = {"infile": "/data/in.nii", "maskfile": "out.nii"}
     parsed = model.model_validate(inv)
@@ -21,7 +21,7 @@ def test_invocation_model_validates_minimal_required():
 
 
 def test_invocation_model_rejects_unknown_input():
-    descriptor = load(FSL_BET)
+    descriptor = load_descriptor(FSL_BET)
     model = invocation_model_for(descriptor)
     with pytest.raises(ValidationError, match="not_a_real_input"):
         model.model_validate(
@@ -30,7 +30,7 @@ def test_invocation_model_rejects_unknown_input():
 
 
 def test_invocation_model_enforces_range():
-    descriptor = load(FSL_BET)
+    descriptor = load_descriptor(FSL_BET)
     model = invocation_model_for(descriptor)
     # fractional_intensity is constrained: 0 <= x <= 1
     # The dynamic model uses float typing; range enforcement is currently informational
@@ -41,7 +41,7 @@ def test_invocation_model_enforces_range():
 
 
 def test_example_includes_only_required_by_default():
-    descriptor = load(FSL_BET)
+    descriptor = load_descriptor(FSL_BET)
     inv = generate(descriptor)
     required_ids = {i.id for i in descriptor.inputs if not i.optional}
     assert set(inv.keys()) == required_ids
@@ -57,7 +57,7 @@ def test_example_skips_flags_even_when_required():
     Real-world descriptors (e.g. niwrap-style) frequently leave `optional`
     unset on flags.
     """
-    descriptor = load(
+    descriptor = load_descriptor(
         {
             "schema-version": "0.5",
             "name": "t",
@@ -93,14 +93,14 @@ def test_example_skips_flags_even_when_required():
 
 
 def test_example_complete_includes_optional():
-    descriptor = load(FSL_BET)
+    descriptor = load_descriptor(FSL_BET)
     inv = generate(descriptor, complete=True)
     all_ids = {i.id for i in descriptor.inputs}
     assert set(inv.keys()) == all_ids
 
 
 def test_simulate_emits_flags_and_values():
-    descriptor = load(FSL_BET)
+    descriptor = load_descriptor(FSL_BET)
     inv = {
         "infile": "/data/in.nii",
         "maskfile": "out.nii",
@@ -114,7 +114,7 @@ def test_simulate_emits_flags_and_values():
 
 
 def test_simulate_omits_unset_optional_inputs():
-    descriptor = load(FSL_BET)
+    descriptor = load_descriptor(FSL_BET)
     inv = {"infile": "/data/in.nii", "maskfile": "out.nii"}
     cmd = simulate(descriptor, inv)
     # No optional flags present
@@ -123,7 +123,7 @@ def test_simulate_omits_unset_optional_inputs():
 
 
 def test_simulate_handles_list_separator():
-    descriptor = load(FSL_BET)
+    descriptor = load_descriptor(FSL_BET)
     inv = {
         "infile": "/in",
         "maskfile": "out",
@@ -134,7 +134,7 @@ def test_simulate_handles_list_separator():
 
 
 def test_simulate_roundtrips_generated_example():
-    descriptor = load(FSL_BET)
+    descriptor = load_descriptor(FSL_BET)
     inv = generate(descriptor)
     cmd = simulate(descriptor, inv)
     assert cmd.startswith("bet ")
