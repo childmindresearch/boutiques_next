@@ -323,13 +323,23 @@ def test_singularity_auto_pulls_missing_imagepath(tmp_path):
     pull_argv: list[list[str]] = []
     exec_captured: dict = {}
 
-    def fake_run(argv, **kwargs):
-        if argv[1] == "pull":
-            pull_argv.append(argv)
+    def fake_run(base_command, **kwargs):
+        wrapper = kwargs.get("wrapper")
+        command = wrapper + base_command if wrapper else base_command
+        if base_command[1] == "pull":
+            pull_argv.append(base_command)
             img.write_bytes(b"")
-            return RunResult(exit_code=0, stdout="", stderr="", duration_seconds=0.0)
-        exec_captured["argv"] = argv
-        return RunResult(exit_code=0, stdout="", stderr="", duration_seconds=0.0)
+        else:
+            exec_captured["argv"] = command
+        return RunResult(
+            exit_code=0,
+            stdout="",
+            stderr="",
+            duration_seconds=0.0,
+            base_command=base_command,
+            wrapper=wrapper,
+            command=command,
+        )
 
     with (
         patch(
