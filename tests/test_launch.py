@@ -146,7 +146,7 @@ def test_docker_runtime_wraps_argv(tmp_path):
     image_idx = argv.index("example/tool")
     assert argv[image_idx + 1 :] == ["do_thing", "hello"]
     assert result.base_command == ["do_thing", "hello"]
-    assert result.wrapper == argv[:image_idx + 1]
+    assert result.wrapper == argv[: image_idx + 1]
     assert result.wrapper is not None
 
 
