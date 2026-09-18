@@ -4,7 +4,12 @@ from unittest.mock import patch
 
 import pytest
 
-from boutiques.loader import DescriptorLoadError, _normalize_github_url, load_descriptor, load_invocation
+from boutiques.loader import (
+    DescriptorLoadError,
+    _normalize_github_url,
+    load_descriptor,
+    load_invocation,
+)
 from boutiques.models.v05 import Descriptor as V05Descriptor
 
 FIXTURES = Path(__file__).parent / "fixtures"
