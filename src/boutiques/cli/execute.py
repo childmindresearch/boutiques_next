@@ -86,7 +86,9 @@ def launch(
     descriptor: str = typer.Argument(
         ..., help="Path, http(s) URL, or JSON string of a Boutiques descriptor."
     ),
-    invocation: str = typer.Argument(..., help="Invocation as a JSON file path or JSON string."),
+    invocation: str = typer.Argument(
+        ..., help="Invocation as a JSON file path or JSON string."
+    ),
     volumes: list[str] = typer.Option(
         [],
         "-v",
@@ -150,7 +152,9 @@ def launch(
     imagepath: str | None = typer.Option(
         None,
         "--imagepath",
-        help="Classic compat: path to a local container image (not implemented yet).",
+        help=(
+            "Path to a local container image (singularity only; pulled into place if missing)."
+        ),
     ),
     user: bool = typer.Option(
         False,
@@ -171,27 +175,24 @@ def launch(
     no_pull: bool = typer.Option(
         False,
         "--no-pull",
-        help="Classic compat: do not pull the container image (not implemented yet).",
+        help=(
+            "Do not pull the container image: docker passes --pull=never; "
+            "singularity refuses remote images unless --imagepath points at a local file."
+        ),
     ),
     no_automounts: bool = typer.Option(
         False,
         "--no-automounts",
-        help="Classic compat: disable auto-mounting input files (not implemented yet).",
+        help="Disable automatic mount of all input files present in the invocation.",
     ),
 ) -> None:
     """Launch a descriptor with an invocation under the chosen runtime."""
-    if imagepath is not None:
-        not_implemented("--imagepath")
     if user:
         not_implemented("--user")
     if provenance is not None:
         not_implemented("--provenance")
     if sandbox:
         not_implemented("--sandbox")
-    if no_pull:
-        not_implemented("--no-pull")
-    if no_automounts:
-        not_implemented("--no-automounts")
 
     parsed = load_descriptor_or_exit(descriptor)
 
@@ -219,6 +220,9 @@ def launch(
             runtime_args=extra_args,
             stream=True,
             capture=False,  # output already streamed; don't buffer twice
+            image_path=Path(imagepath).resolve() if imagepath else None,
+            no_pull=no_pull,
+            no_automounts=no_automounts,
         )
     except InvocationValidationError as exc:
         typer.echo(f"Invocation invalid:\n{exc}", err=True)
