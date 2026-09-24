@@ -8,8 +8,16 @@ from unittest.mock import patch
 import pytest
 
 from boutiques.execution import launch
+from boutiques.execution.runtime import apptainer, singularity
 from boutiques.execution.runtime.base import RunResult, RuntimeError_
 from boutiques.loader import load_descriptor
+
+_SINGULARITY_STYLE_MODULES = {"singularity": singularity, "apptainer": apptainer}
+
+
+@pytest.fixture(params=["singularity", "apptainer"])
+def singularity_style_runtime(request: pytest.FixtureRequest) -> str:
+    return request.param
 
 
 def _echo_descriptor():
@@ -212,51 +220,85 @@ def test_runtime_args_pass_through_to_docker(tmp_path):
         assert idx < image_idx, f"{token!r} should precede image ref"
 
 
-def test_singularity_runtime_uses_docker_uri(tmp_path):
+def test_singularity_style_runtimes_use_expected_executable(singularity_style_runtime, tmp_path):
+    """The only per-runtime difference is which executable wraps the tool."""
     captured: dict = {}
-    with (
-        patch(
-            "boutiques.execution.runtime.singularity.run_subprocess",
-            side_effect=_fake_run_subprocess(captured),
-        ),
-        patch(
-            "boutiques.execution.runtime.singularity.shutil.which",
-            return_value=None,
-        ),
+    with patch(
+        "boutiques.execution.runtime._singularity_style.run_subprocess",
+        side_effect=_fake_run_subprocess(captured),
     ):
-        launch(_docker_descriptor(), {"x": "hi"}, runtime="singularity", cwd=tmp_path)
+        _SINGULARITY_STYLE_MODULES[singularity_style_runtime].run(
+            ["do_thing", "hi"],
+            container_image=_docker_descriptor().container_image,
+            env={},
+            cwd=tmp_path,
+        )
+
+    assert captured["argv"][0] == singularity_style_runtime
+
+
+def test_singularity_style_runtime_uses_docker_uri(singularity_style_runtime, tmp_path):
+    captured: dict = {}
+    with patch(
+        "boutiques.execution.runtime._singularity_style.run_subprocess",
+        side_effect=_fake_run_subprocess(captured),
+    ):
+        launch(_docker_descriptor(), {"x": "hi"}, runtime=singularity_style_runtime, cwd=tmp_path)
 
     argv = captured["argv"]
-    assert argv[0] == "singularity"
+    assert argv[0] == singularity_style_runtime
     assert "exec" in argv
     assert "--bind" in argv and "--pwd" in argv
     assert "docker://example/tool" in argv
 
 
-def test_singularity_uses_existing_local_imagepath(tmp_path):
+def test_singularity_style_requires_container_image(singularity_style_runtime, tmp_path):
+    descriptor = _echo_descriptor()  # no container-image
+    with pytest.raises(RuntimeError_, match=rf"{singularity_style_runtime} runtime requires"):
+        launch(
+            descriptor,
+            {"python": "p", "script": "s", "msg": "m"},
+            runtime=singularity_style_runtime,
+            cwd=tmp_path,
+        )
+
+
+def test_singularity_style_passes_env(singularity_style_runtime, tmp_path):
+    captured: dict = {}
+    with patch(
+        "boutiques.execution.runtime._singularity_style.run_subprocess",
+        side_effect=_fake_run_subprocess(captured),
+    ):
+        _SINGULARITY_STYLE_MODULES[singularity_style_runtime].run(
+            ["tool"],
+            container_image=_docker_descriptor().container_image,
+            env={"K": "V"},
+            cwd=tmp_path,
+        )
+
+    argv = captured["argv"]
+    assert "--env" in argv
+    assert "K=V" in argv
+
+
+def test_singularity_style_uses_existing_local_imagepath(singularity_style_runtime, tmp_path):
     img = tmp_path / "local.sif"
     img.write_bytes(b"")
     captured: dict = {}
-    with (
-        patch(
-            "boutiques.execution.runtime.singularity.run_subprocess",
-            side_effect=_fake_run_subprocess(captured),
-        ),
-        patch(
-            "boutiques.execution.runtime.singularity.shutil.which",
-            return_value=None,
-        ),
+    with patch(
+        "boutiques.execution.runtime._singularity_style.run_subprocess",
+        side_effect=_fake_run_subprocess(captured),
     ):
         launch(
             _docker_descriptor(),
             {"x": "hi"},
-            runtime="singularity",
+            runtime=singularity_style_runtime,
             cwd=tmp_path,
             image_path=img,
         )
 
     argv = captured["argv"]
-    assert argv[0] == "singularity"
+    assert argv[0] == singularity_style_runtime
     assert str(img) in argv
     assert not any("docker://" in token for token in argv)
 
@@ -288,15 +330,9 @@ def test_cli_launch_imagepath_uses_local_image(tmp_path):
     img.write_bytes(b"")
 
     captured: dict = {}
-    with (
-        patch(
-            "boutiques.execution.runtime.singularity.run_subprocess",
-            side_effect=_fake_run_subprocess(captured),
-        ),
-        patch(
-            "boutiques.execution.runtime.singularity.shutil.which",
-            return_value=None,
-        ),
+    with patch(
+        "boutiques.execution.runtime._singularity_style.run_subprocess",
+        side_effect=_fake_run_subprocess(captured),
     ):
         result = CliRunner().invoke(
             app,
@@ -318,7 +354,7 @@ def test_cli_launch_imagepath_uses_local_image(tmp_path):
     assert not any("docker://" in token for token in argv)
 
 
-def test_singularity_auto_pulls_missing_imagepath(tmp_path):
+def test_singularity_style_auto_pulls_missing_imagepath(singularity_style_runtime, tmp_path):
     img = tmp_path / "pulled.sif"
     pull_argv: list[list[str]] = []
     exec_captured: dict = {}
@@ -341,59 +377,47 @@ def test_singularity_auto_pulls_missing_imagepath(tmp_path):
             command=command,
         )
 
-    with (
-        patch(
-            "boutiques.execution.runtime.singularity.run_subprocess",
-            side_effect=fake_run,
-        ),
-        patch(
-            "boutiques.execution.runtime.singularity.shutil.which",
-            return_value=None,
-        ),
+    with patch(
+        "boutiques.execution.runtime._singularity_style.run_subprocess",
+        side_effect=fake_run,
     ):
         launch(
             _docker_descriptor(),
             {"x": "hi"},
-            runtime="singularity",
+            runtime=singularity_style_runtime,
             cwd=tmp_path,
             image_path=img,
         )
 
-    assert pull_argv == [["singularity", "pull", str(img), "docker://example/tool"]]
+    assert pull_argv == [[singularity_style_runtime, "pull", str(img), "docker://example/tool"]]
     assert str(img) in exec_captured["argv"]
 
 
-def test_singularity_no_pull_missing_imagepath_errors(tmp_path):
+def test_singularity_style_no_pull_missing_imagepath_errors(singularity_style_runtime, tmp_path):
     img = tmp_path / "missing.sif"
     with pytest.raises(RuntimeError_, match="--no-pull"):
         launch(
             _docker_descriptor(),
             {"x": "hi"},
-            runtime="singularity",
+            runtime=singularity_style_runtime,
             cwd=tmp_path,
             image_path=img,
             no_pull=True,
         )
 
 
-def test_singularity_no_pull_allows_existing_imagepath(tmp_path):
+def test_singularity_style_no_pull_allows_existing_imagepath(singularity_style_runtime, tmp_path):
     img = tmp_path / "local.sif"
     img.write_bytes(b"")
     captured: dict = {}
-    with (
-        patch(
-            "boutiques.execution.runtime.singularity.run_subprocess",
-            side_effect=_fake_run_subprocess(captured),
-        ),
-        patch(
-            "boutiques.execution.runtime.singularity.shutil.which",
-            return_value=None,
-        ),
+    with patch(
+        "boutiques.execution.runtime._singularity_style.run_subprocess",
+        side_effect=_fake_run_subprocess(captured),
     ):
         launch(
             _docker_descriptor(),
             {"x": "hi"},
-            runtime="singularity",
+            runtime=singularity_style_runtime,
             cwd=tmp_path,
             image_path=img,
             no_pull=True,
@@ -402,22 +426,22 @@ def test_singularity_no_pull_allows_existing_imagepath(tmp_path):
     assert str(img) in captured["argv"]
 
 
-def test_singularity_no_pull_refuses_remote_uri(tmp_path):
+def test_singularity_style_no_pull_refuses_remote_uri(singularity_style_runtime, tmp_path):
     with pytest.raises(RuntimeError_, match="--no-pull is specified without --imagepath"):
         launch(
             _docker_descriptor(),
             {"x": "hi"},
-            runtime="singularity",
+            runtime=singularity_style_runtime,
             cwd=tmp_path,
             no_pull=True,
         )
 
 
-def test_imagepath_rejected_for_non_singularity_runtime(tmp_path):
+def test_imagepath_rejected_for_non_singularity_style_runtime(tmp_path):
     img = tmp_path / "local.sif"
     img.write_bytes(b"")
     for runtime in ("docker", "local"):
-        with pytest.raises(RuntimeError_, match="only applies to the singularity runtime"):
+        with pytest.raises(RuntimeError_, match="only applies to the singularity and apptainer"):
             launch(
                 _docker_descriptor(),
                 {"x": "hi"},
@@ -468,7 +492,7 @@ def test_cli_launch_imagepath_with_docker_errors(tmp_path):
     )
     assert result.exit_code == 2
     combined = (result.stdout or "") + (result.stderr or "")
-    assert "only applies to the singularity runtime" in combined
+    assert "only applies to the singularity and apptainer" in combined
 
 
 def test_docker_no_pull_adds_pull_never(tmp_path):
@@ -513,27 +537,21 @@ def test_docker_no_automounts_skips_file_mounts(tmp_path):
     assert str(data_dir) not in " ".join(mount_pairs)
 
 
-def test_singularity_no_automounts_skips_file_mounts(tmp_path):
+def test_singularity_style_no_automounts_skips_file_mounts(singularity_style_runtime, tmp_path):
     data_dir = tmp_path / "data"
     data_dir.mkdir()
     file_path = data_dir / "input.nii"
     file_path.write_bytes(b"")
 
     captured: dict = {}
-    with (
-        patch(
-            "boutiques.execution.runtime.singularity.run_subprocess",
-            side_effect=_fake_run_subprocess(captured),
-        ),
-        patch(
-            "boutiques.execution.runtime.singularity.shutil.which",
-            return_value=None,
-        ),
+    with patch(
+        "boutiques.execution.runtime._singularity_style.run_subprocess",
+        side_effect=_fake_run_subprocess(captured),
     ):
         launch(
             _file_descriptor(),
             {"f": str(file_path)},
-            runtime="singularity",
+            runtime=singularity_style_runtime,
             cwd=tmp_path,
             no_automounts=True,
         )
