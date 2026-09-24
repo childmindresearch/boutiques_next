@@ -4,10 +4,10 @@ from boutiques.execution import resolve, simulate
 from boutiques.loader import load_descriptor
 
 
-def _descriptor(inputs, command_line="tool [X]"):
+def _descriptor(inputs, command_line="tool [X]", schema_version="0.5"):
     return load_descriptor(
         {
-            "schema-version": "0.5",
+            "schema-version": schema_version,
             "name": "t",
             "description": "test",
             "tool-version": "1.0",
@@ -116,4 +116,53 @@ def test_optional_omitted_input_drops_token():
         ]
     )
     # No value provided; the value-key token vanishes entirely.
+    assert resolve(d, {}) == ["tool"]
+
+
+def _repeatable_subcommand(command_line="tool [C]", input_extra=None):
+    """Flag-bearing repeatable sub-command; extra input kwargs merged in."""
+    base = {
+        "id": "c",
+        "name": "C",
+        "value-key": "[C]",
+        "command-line-flag": "--config",
+        "optional": True,
+        "list": True,
+        "type": {
+            "id": "cfg",
+            "command-line": "[K] [V]",
+            "inputs": [
+                {"id": "k", "name": "K", "type": "String", "value-key": "[K]"},
+                {"id": "v", "name": "V", "type": "String", "value-key": "[V]"},
+            ],
+        },
+    }
+    if input_extra:
+        base.update(input_extra)
+    return _descriptor([base], command_line=command_line, schema_version="0.5+styx")
+
+
+def test_repeatable_subcommand_flag_emitted_once():
+    """A parent flag on a list sub-command prefixes the whole repeated block
+    (styx: optional(sequence(flag, repeat(...))))."""
+    d = _repeatable_subcommand()
+    tokens = resolve(
+        d,
+        {"c": [{"k": "a", "v": "1"}, {"k": "b", "v": "2"}]},
+    )
+    assert tokens == ["tool", "--config", "a", "1", "b", "2"]
+
+
+def test_repeatable_subcommand_custom_separator_joins_one_token():
+    """A custom list-separator fuses the repeated blocks into a single token."""
+    d = _repeatable_subcommand(input_extra={"list-separator": "+"})
+    tokens = resolve(
+        d,
+        {"c": [{"k": "a", "v": "1"}, {"k": "b", "v": "2"}]},
+    )
+    assert tokens == ["tool", "--config", "a 1+b 2"]
+
+
+def test_repeatable_subcommand_omitted_drops_token():
+    d = _repeatable_subcommand()
     assert resolve(d, {}) == ["tool"]

@@ -115,25 +115,33 @@ def _check_scope(
         if inp.id not in values:
             continue
         child_value = values[inp.id]
-        if isinstance(inp, SubCommandInput):
-            _check_scope(
-                inp.type,
-                child_value,
-                errors,
-                prefix=f"{prefix}inputs[{inp.id}].type.",
-            )
-        elif isinstance(inp, SubCommandUnionInput):
-            chosen_id = (
-                child_value.get(DISCRIMINATOR_KEY) if isinstance(child_value, dict) else None
-            )
-            chosen = next((sc for sc in inp.type if sc.id == chosen_id), None)
-            if chosen is not None:
+        entries = child_value if isinstance(child_value, list) else [child_value]
+        indexed = isinstance(child_value, list)
+        for index, entry in enumerate(entries):
+            if isinstance(inp, SubCommandInput):
+                sub = ""
+                if indexed:
+                    sub = f"[{index}]"
                 _check_scope(
-                    chosen,
-                    child_value,
+                    inp.type,
+                    entry,
                     errors,
-                    prefix=f"{prefix}inputs[{inp.id}].type[{chosen_id}].",
+                    prefix=f"{prefix}inputs[{inp.id}].type{sub}.",
                 )
+            elif isinstance(inp, SubCommandUnionInput):
+                chosen_id = entry.get(DISCRIMINATOR_KEY) if isinstance(entry, dict) else None
+                chosen = next((sc for sc in inp.type if sc.id == chosen_id), None)
+                if chosen is not None:
+                    if indexed:
+                        loc = f"inputs[{inp.id}].type[{chosen_id}][{index}]"
+                    else:
+                        loc = f"inputs[{inp.id}].type[{chosen_id}]"
+                    _check_scope(
+                        chosen,
+                        entry,
+                        errors,
+                        prefix=f"{prefix}{loc}.",
+                    )
 
 
 def _active_input_ids(

@@ -415,6 +415,65 @@ def test_requires_inputs_inside_subcommand():
     assert any("requires 'b'" in str(e) for e in errs)
 
 
+def test_requires_inputs_enforced_per_list_entry():
+    """Each entry of a repeatable sub-command is scope-checked independently."""
+    d = load_descriptor(
+        {
+            "schema-version": "0.5+styx",
+            "name": "t",
+            "tool-version": "0.1",
+            "description": "x",
+            "command-line": "t [OP]",
+            "inputs": [
+                {
+                    "id": "op",
+                    "name": "OP",
+                    "value-key": "[OP]",
+                    "list": True,
+                    "optional": True,
+                    "type": [
+                        {
+                            "id": "do",
+                            "command-line": "do [A] [B]",
+                            "inputs": [
+                                {
+                                    "id": "a",
+                                    "name": "A",
+                                    "type": "Flag",
+                                    "command-line-flag": "-a",
+                                    "value-key": "[A]",
+                                    "requires-inputs": ["b"],
+                                },
+                                {
+                                    "id": "b",
+                                    "name": "B",
+                                    "type": "String",
+                                    "value-key": "[B]",
+                                    "optional": True,
+                                },
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+    # First entry is missing 'b' -> one violation, located at the first list slot.
+    errs = validate_invocation(
+        d, {"op": [{"@type": "do", "a": True}, {"@type": "do", "a": True, "b": "x"}]}
+    )
+    assert len(errs) == 1
+    assert "requires 'b'" in str(errs[0])
+    assert errs[0].location == "inputs[op].type[do][0].inputs[a].requires-inputs"
+    # Both entries satisfied -> clean.
+    assert (
+        validate_invocation(
+            d, {"op": [{"@type": "do", "a": True, "b": "x"}, {"@type": "do", "a": True, "b": "y"}]}
+        )
+        == []
+    )
+
+
 # ---- Resolve integration -------------------------------------------------
 
 
