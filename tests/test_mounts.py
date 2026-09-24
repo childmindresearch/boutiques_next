@@ -125,6 +125,48 @@ def test_collect_file_mounts_recurses_into_subcommand_union():
     assert any(p.name == "nested" for p in mounts)
 
 
+def test_collect_file_mounts_recurses_into_repeatable_subcommand():
+    """Each entry of a `list: true` sub-command contributes file mounts."""
+    descriptor = load(
+        {
+            "schema-version": "0.5+styx",
+            "name": "t",
+            "tool-version": "0.1",
+            "description": "x",
+            "command-line": "t [OP]",
+            "inputs": [
+                {
+                    "id": "op",
+                    "name": "OP",
+                    "value-key": "[OP]",
+                    "list": True,
+                    "optional": True,
+                    "type": {
+                        "id": "run",
+                        "command-line": "run [IN]",
+                        "inputs": [
+                            {
+                                "id": "in",
+                                "name": "IN",
+                                "type": "File",
+                                "value-key": "[IN]",
+                            }
+                        ],
+                    },
+                }
+            ],
+        }
+    )
+    mounts = collect_file_mounts(
+        descriptor,
+        {"op": [{"in": "/alpha/a.nii"}, {"in": "/beta/b.nii"}]},
+    )
+    parents = {p.name for p in mounts}
+    assert "alpha" in parents
+    assert "beta" in parents
+    assert len(mounts) == 2
+
+
 def test_docker_runtime_mounts_file_input_parents(tmp_path):
     """Real proof: file-input parent dirs become -v flags on docker run."""
     descriptor = _descriptor_with_files(2)

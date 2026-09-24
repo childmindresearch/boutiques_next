@@ -112,21 +112,22 @@ def _field_spec(inp: Any) -> tuple[str, Any, Any]:
     py_name = _safe_identifier(inp.id)
     alias = inp.id
 
-    # ``py_type`` may be a Pydantic model class, a typing alias, or a union.
+    # ``base_type`` may be a Pydantic model class, a typing alias, or a union.
     # We type it as Any so each branch can assign freely.
-    py_type: Any
+    base_type: Any
     extra: dict[str, Any] = {}
     if isinstance(inp, SubCommandInput):
-        py_type = _build_model(inp.type, inject_id=None)
+        base_type = _build_model(inp.type, inject_id=None)
     elif isinstance(inp, SubCommandUnionInput):
         members = tuple(_build_model(sc, inject_id=sc.id) for sc in inp.type)
         union = reduce(operator.or_, members)
-        py_type = Annotated[union, Field(discriminator=_DISCRIMINATOR_PY_NAME)]
+        base_type = Annotated[union, Field(discriminator=_DISCRIMINATOR_PY_NAME)]
     else:
         base_type = _python_type_of(inp)
-        is_list = bool(getattr(inp, "list_", False))
-        py_type = list[base_type] if is_list else base_type  # type: ignore[valid-type]
-        extra.update(_constraint_kwargs(inp, is_list))
+
+    is_list = bool(getattr(inp, "list_", False))
+    py_type = list[base_type] if is_list else base_type
+    extra.update(_constraint_kwargs(inp, is_list))
 
     if inp.optional:
         py_type = py_type | None

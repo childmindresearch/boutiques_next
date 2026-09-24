@@ -102,18 +102,16 @@ def _expand_token(
 
 def _render_tokens(inp: Any, value: Any) -> list[str]:
     """Render an input value as zero or more argv tokens."""
-    if isinstance(inp, SubCommandInput):
+    if isinstance(inp, (SubCommandInput, SubCommandUnionInput)):
         if value is None:
             return []
-        nested = _resolve_template(inp.type.command_line, inp.type.inputs, value)
-        return _prefix_flag(inp, nested)
-
-    if isinstance(inp, SubCommandUnionInput):
-        if value is None:
-            return []
-        chosen = _choose_subcommand(inp, value)
-        nested = _resolve_template(chosen.command_line, chosen.inputs, value)
-        return _prefix_flag(inp, nested)
+        values = value if isinstance(value, list) else [value]
+        if inp.list_separator is not None and inp.list_separator != " ":
+            rendered = [" ".join(_render_subcommand(inp, entry)) for entry in values]
+            tokens = [inp.list_separator.join(rendered)]
+        else:
+            tokens = [token for entry in values for token in _render_subcommand(inp, entry)]
+        return _prefix_flag(inp, tokens)
 
     if value is None:
         return []
@@ -131,6 +129,14 @@ def _render_tokens(inp: Any, value: Any) -> list[str]:
         value_tokens = [str(value)]
 
     return _prefix_flag(inp, value_tokens)
+
+
+def _render_subcommand(inp: Any, value: dict[str, Any]) -> list[str]:
+    """Resolve a single sub-command block (a nested dict) into argv tokens."""
+    if isinstance(inp, SubCommandInput):
+        return _resolve_template(inp.type.command_line, inp.type.inputs, value)
+    chosen = _choose_subcommand(inp, value)
+    return _resolve_template(chosen.command_line, chosen.inputs, value)
 
 
 def _prefix_flag(inp: Any, value_tokens: list[str]) -> list[str]:
@@ -161,12 +167,9 @@ def _render_scalar_or_empty(inp: Any, value: Any) -> str:
     if isinstance(inp, FlagInput):
         return inp.command_line_flag if value else ""
     if isinstance(inp, (SubCommandInput, SubCommandUnionInput)):
-        target: SubCommandType
-        if isinstance(inp, SubCommandInput):
-            target = inp.type
-        else:
-            target = _choose_subcommand(inp, value)
-        return " ".join(_resolve_template(target.command_line, target.inputs, value))
+        entries = value if isinstance(value, list) else [value]
+        sep = inp.list_separator if inp.list_separator is not None else " "
+        return sep.join(" ".join(_render_subcommand(inp, entry)) for entry in entries)
     if isinstance(value, list):
         sep = inp.list_separator if inp.list_separator is not None else " "
         return sep.join(str(v) for v in value)

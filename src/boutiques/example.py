@@ -47,16 +47,17 @@ def _generate(
 
 def _example_value(inp: Any, complete: bool) -> Any:
     if isinstance(inp, SubCommandInput):
-        return _generate(inp.type, complete=complete)
-    if isinstance(inp, SubCommandUnionInput):
+        value: Any = _generate(inp.type, complete=complete)
+    elif isinstance(inp, SubCommandUnionInput):
         chosen = inp.type[0]
-        return {DISCRIMINATOR_KEY: chosen.id, **_generate(chosen, complete=complete)}
+        value = {DISCRIMINATOR_KEY: chosen.id, **_generate(chosen, complete=complete)}
+    else:
+        value = _scalar_example(inp)
 
-    base = _scalar_example(inp)
     if getattr(inp, "list_", False):
         min_entries = int(inp.min_list_entries) if inp.min_list_entries else 1
-        return [base] * max(1, min_entries)
-    return base
+        return [value] * max(1, min_entries)
+    return value
 
 
 def _scalar_example(inp: Any) -> Any:

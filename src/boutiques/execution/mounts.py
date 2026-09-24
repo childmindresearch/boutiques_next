@@ -44,12 +44,22 @@ def _iter_file_paths(inputs: list[Any] | None, values: dict[str, Any]) -> Iterat
                 yield from (str(v) for v in value if v)
             elif value:
                 yield str(value)
-        elif isinstance(inp, SubCommandInput):
-            yield from _iter_file_paths(inp.type.inputs, value or {})
-        elif isinstance(inp, SubCommandUnionInput):
-            chosen = _chosen_subcommand(inp, value)
-            if chosen is not None:
-                yield from _iter_file_paths(chosen.inputs, value)
+        elif isinstance(inp, (SubCommandInput, SubCommandUnionInput)):
+            entries = value if isinstance(value, list) else [value]
+            for entry in entries:
+                yield from _iter_subcommand_file_paths(inp, entry)
+
+
+def _iter_subcommand_file_paths(
+    inp: SubCommandInput | SubCommandUnionInput,
+    value: Any,
+) -> Iterator[str]:
+    if isinstance(inp, SubCommandInput):
+        yield from _iter_file_paths(inp.type.inputs, value or {})
+        return
+    chosen = _chosen_subcommand(inp, value)
+    if chosen is not None:
+        yield from _iter_file_paths(chosen.inputs, value)
 
 
 def _chosen_subcommand(inp: SubCommandUnionInput, value: Any) -> SubCommandType | None:
