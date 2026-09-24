@@ -13,7 +13,7 @@ bosh invocation <descriptor> [-i INVOCATION] [-w]
 
 | Flag | Description |
 | --- | --- |
-| `-i`, `--invocation` | Validate this invocation file against the descriptor's schema. |
+| `-i`, `--invocation` | Validate this invocation against the descriptor's schema. Accepts a JSON file path or an inline JSON string. |
 | `-w`, `--write-schema` | Embed the generated invocation schema into the descriptor file (under `invocation-schema`). Requires the descriptor to be a local path. |
 
 ## Behaviour
@@ -21,10 +21,10 @@ bosh invocation <descriptor> [-i INVOCATION] [-w]
 - **Plain mode** (no flags): confirms the descriptor's input shape is
   internally consistent — i.e. an invocation schema can be built. Prints
   `OK` on success, exits 1 otherwise.
-- **`-i invocation.json`**: validates the given invocation against the
-  schema using the same three layers `bosh exec simulate` runs
-  (structural / cross-input / groups). Prints `OK` or the failing
-  locations; exits 0/1.
+- **`-i invocation.json`** (or an inline JSON string): validates the
+  given invocation against the schema using the same three layers
+  `bosh exec simulate` runs (structural / cross-input / groups). Prints
+  `OK` or the failing locations; exits 0/1.
 - **`-w`**: computes the invocation schema and writes it back into the
   descriptor file as the `invocation-schema` field. The descriptor is
   re-serialized with two-space indentation. Useful when shipping
@@ -38,9 +38,11 @@ bosh invocation <descriptor> [-i INVOCATION] [-w]
 $ bosh invocation fsl_bet.json
 OK
 
-# Validate a specific invocation
+# Validate a specific invocation (file path or inline JSON)
 $ bosh invocation fsl_bet.json -i invocation.json
 fractional_intensity: Input should be less than or equal to 1
+$ bosh invocation fsl_bet.json -i '{"infile": "/in.nii", "maskfile": "out.nii"}'
+OK
 
 # Embed the schema for distribution
 $ bosh invocation fsl_bet.json -w
@@ -50,10 +52,10 @@ Wrote invocation-schema into fsl_bet.json
 ## Python equivalent
 
 ```python
-from boutiques import load
+from boutiques.loader import load_descriptor
 from boutiques.invocation_check import validate_invocation
 
-descriptor = load("fsl_bet.json")
+descriptor = load_descriptor("fsl_bet.json")
 errors = validate_invocation(descriptor, {"infile": "/in.nii", "maskfile": "out.nii"})
 if errors:
     for e in errors:

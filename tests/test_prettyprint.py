@@ -8,7 +8,7 @@ from rich.console import Console
 from typer.testing import CliRunner
 
 from boutiques.cli import app
-from boutiques.loader import load
+from boutiques.loader import load_descriptor
 from boutiques.prettyprint import pprint
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -22,7 +22,7 @@ def _render(descriptor) -> str:
 
 
 def test_renders_basic_fields():
-    descriptor = load(FIXTURES / "v05" / "fsl_bet.json")
+    descriptor = load_descriptor(FIXTURES / "v05" / "fsl_bet.json")
     output = _render(descriptor)
     assert "fsl_bet" in output
     assert "v1.0.0" in output
@@ -31,27 +31,27 @@ def test_renders_basic_fields():
 
 
 def test_lists_every_input_id():
-    descriptor = load(FIXTURES / "v05" / "fsl_bet.json")
+    descriptor = load_descriptor(FIXTURES / "v05" / "fsl_bet.json")
     output = _render(descriptor)
     for inp in descriptor.inputs:
         assert inp.id in output
 
 
 def test_includes_input_count():
-    descriptor = load(FIXTURES / "v05" / "fsl_bet.json")
+    descriptor = load_descriptor(FIXTURES / "v05" / "fsl_bet.json")
     output = _render(descriptor)
     assert f"inputs ({len(descriptor.inputs)})" in output
 
 
 def test_marks_required_and_optional():
-    descriptor = load(FIXTURES / "v05" / "fsl_bet.json")
+    descriptor = load_descriptor(FIXTURES / "v05" / "fsl_bet.json")
     output = _render(descriptor)
     assert "required" in output
     assert "optional" in output
 
 
 def test_shows_container_image():
-    descriptor = load(FIXTURES / "v05" / "fsl_bet.json")
+    descriptor = load_descriptor(FIXTURES / "v05" / "fsl_bet.json")
     output = _render(descriptor)
     assert "container" in output
     assert "docker" in output
@@ -59,13 +59,13 @@ def test_shows_container_image():
 
 def test_shows_numeric_ranges():
     """fsl_bet's fractional_intensity has minimum=0, maximum=1."""
-    descriptor = load(FIXTURES / "v05" / "fsl_bet.json")
+    descriptor = load_descriptor(FIXTURES / "v05" / "fsl_bet.json")
     output = _render(descriptor)
     assert "range: [0" in output
 
 
 def test_renders_subcommand_union():
-    descriptor = load(FIXTURES / "v05_styx" / "subcommand_union.json")
+    descriptor = load_descriptor(FIXTURES / "v05_styx" / "subcommand_union.json")
     output = _render(descriptor)
     assert "SubCommandUnion" in output
     # Both candidates appear, each with its own command-line
@@ -76,14 +76,14 @@ def test_renders_subcommand_union():
 
 
 def test_renders_list_bounds():
-    descriptor = load(FIXTURES / "v05_styx" / "subcommand_union.json")
+    descriptor = load_descriptor(FIXTURES / "v05_styx" / "subcommand_union.json")
     output = _render(descriptor)
     assert "list:" in output
     assert "separator=" in output
 
 
 def test_renders_niwrap_style_with_stdio_outputs():
-    descriptor = load(FIXTURES / "v05_styx" / "niwrap_style.json")
+    descriptor = load_descriptor(FIXTURES / "v05_styx" / "niwrap_style.json")
     output = _render(descriptor)
     assert "@2dwarper" in output
     # niwrap-style has tool-version absent; should still render

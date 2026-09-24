@@ -7,15 +7,15 @@ from boutiques.example import generate
 from boutiques.execution import resolve, simulate
 from boutiques.invocation import invocation_model_for
 from boutiques.invocation_check import validate_invocation
-from boutiques.loader import load
+from boutiques.loader import load_descriptor
 
 FIXTURES = Path(__file__).parent / "fixtures"
 SUBCMD = FIXTURES / "v05_styx" / "subcommand_union.json"
 
 
 def _repeatable_verbose():
-    """The issue's fmriprep-style descriptor: a `list: true` sub-command."""
-    return load(
+    """Descriptor with a `list: true` sub-command."""
+    return load_descriptor(
         {
             "schema-version": "0.5+styx",
             "name": "fmriprep",
@@ -42,7 +42,7 @@ def _repeatable_verbose():
 
 
 def test_invocation_model_builds_for_subcommand_union():
-    descriptor = load(SUBCMD)
+    descriptor = load_descriptor(SUBCMD)
     model = invocation_model_for(descriptor)
     # Discriminated union by '@type' (Styx convention) inside the 'op' input.
     inv = {
@@ -55,14 +55,14 @@ def test_invocation_model_builds_for_subcommand_union():
 
 
 def test_invocation_model_rejects_unknown_subcommand_id():
-    descriptor = load(SUBCMD)
+    descriptor = load_descriptor(SUBCMD)
     model = invocation_model_for(descriptor)
     with pytest.raises(ValidationError):
         model.model_validate({"op": {"@type": "nonexistent", "amount": 0.5}, "volumes": ["/v.nii"]})
 
 
 def test_simulate_resolves_chosen_subcommand():
-    descriptor = load(SUBCMD)
+    descriptor = load_descriptor(SUBCMD)
     cmd = simulate(
         descriptor,
         {"op": {"@type": "sharpen", "amount": 0.7}, "volumes": ["/data/v1.nii", "/data/v2.nii"]},
@@ -71,7 +71,7 @@ def test_simulate_resolves_chosen_subcommand():
 
 
 def test_simulate_resolves_other_subcommand():
-    descriptor = load(SUBCMD)
+    descriptor = load_descriptor(SUBCMD)
     cmd = simulate(
         descriptor,
         {"op": {"@type": "blur", "sigma": 2.0}, "volumes": ["/in.nii"]},
@@ -80,7 +80,7 @@ def test_simulate_resolves_other_subcommand():
 
 
 def test_example_picks_first_subcommand_with_type_tag():
-    descriptor = load(SUBCMD)
+    descriptor = load_descriptor(SUBCMD)
     inv = generate(descriptor)
     assert inv["op"]["@type"] == "blur"
     # @type is the required discriminator for the union.
@@ -88,7 +88,7 @@ def test_example_picks_first_subcommand_with_type_tag():
 
 
 def test_example_roundtrips_through_simulate():
-    descriptor = load(SUBCMD)
+    descriptor = load_descriptor(SUBCMD)
     inv = generate(descriptor)
     cmd = simulate(descriptor, inv)
     # Whichever sub-command was chosen, the resolved command-line should
@@ -99,7 +99,7 @@ def test_example_roundtrips_through_simulate():
 
 def test_id_style_invocation_is_rejected():
     """Sanity check: pre-flip ``id``-based invocations no longer validate."""
-    descriptor = load(SUBCMD)
+    descriptor = load_descriptor(SUBCMD)
     model = invocation_model_for(descriptor)
     with pytest.raises(ValidationError):
         model.model_validate({"op": {"id": "blur", "sigma": 1.5}, "volumes": ["/v.nii"]})
@@ -124,7 +124,7 @@ def test_list_subcommand_model_rejects_single_dict():
 
 
 def test_list_subcommand_model_enforces_min_list_entries():
-    descriptor = load(
+    descriptor = load_descriptor(
         {
             "schema-version": "0.5+styx",
             "name": "t",
@@ -162,7 +162,7 @@ def test_simulate_single_entry_and_empty_list():
 
 def test_simulate_repeatable_transform_from_spec_docs():
     """docs/spec/subcommands.md: two transforms resolve back-to-back."""
-    descriptor = load(
+    descriptor = load_descriptor(
         {
             "schema-version": "0.5+styx",
             "name": "transformer",
@@ -212,7 +212,7 @@ def test_simulate_repeatable_transform_from_spec_docs():
 
 
 def test_simulate_union_list_with_mixed_types():
-    descriptor = load(
+    descriptor = load_descriptor(
         {
             "schema-version": "0.5+styx",
             "name": "m",
@@ -273,7 +273,7 @@ def test_example_generates_a_list_for_repeatable_subcommand():
 
 
 def test_example_repeats_to_min_list_entries():
-    descriptor = load(
+    descriptor = load_descriptor(
         {
             "schema-version": "0.5+styx",
             "name": "t",

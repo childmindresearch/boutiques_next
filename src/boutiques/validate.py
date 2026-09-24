@@ -16,7 +16,7 @@ from typing import Any
 
 from boutiques._errors import ValidationError
 from boutiques.lint import LintIssue, lint
-from boutiques.loader import AnyDescriptor, DescriptorLoadError, load
+from boutiques.loader import AnyDescriptor, DescriptorLoadError, load_descriptor
 from boutiques.semantic import check as _semantic_check
 
 __all__ = ["ValidationError", "ValidationResult", "validate"]
@@ -46,7 +46,7 @@ class ValidationResult:
 def validate(source: str | Path | dict[str, Any]) -> ValidationResult:
     """Validate a descriptor and return a ``ValidationResult``."""
     try:
-        descriptor = load(source)
+        descriptor = load_descriptor(source)
     except DescriptorLoadError as exc:
         return ValidationResult(errors=_parse_pydantic_message(str(exc)))
 

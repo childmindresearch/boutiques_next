@@ -48,10 +48,10 @@ Wrote bet.invocation.schema.json
 ## Python equivalent
 
 ```python
-from boutiques import load
+from boutiques.loader import load_descriptor
 from boutiques.invocation import invocation_schema
 
-schema = invocation_schema(load("descriptor.json"))
+schema = invocation_schema(load_descriptor("descriptor.json"))
 ```
 
 `invocation_schema(descriptor)` returns the JSON Schema dict directly;

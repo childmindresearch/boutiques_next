@@ -8,11 +8,11 @@ import pytest
 
 from boutiques.execution import simulate
 from boutiques.invocation import invocation_model_for
-from boutiques.loader import load
+from boutiques.loader import load_descriptor
 
 
 def _descriptor_with_id(input_id: str):
-    return load(
+    return load_descriptor(
         {
             "schema-version": "0.5",
             "name": "t",

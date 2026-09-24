@@ -40,6 +40,6 @@ result = validate("descriptor.json")
 if not result.ok:
     raise SystemExit(result.format())
 
-descriptor = load("descriptor.json")
+descriptor = load_descriptor("descriptor.json")
 outcome = launch(descriptor, {"input_file": "/data/in.nii"}, runtime="docker")
 ```

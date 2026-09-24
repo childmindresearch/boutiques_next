@@ -5,12 +5,12 @@ from __future__ import annotations
 import pytest
 
 from boutiques.execution.outputs import resolve_output_paths
-from boutiques.loader import load
+from boutiques.loader import load_descriptor
 
 
 def _descriptor(*, output, inputs=None, cli="tool [P]"):
     inputs = inputs or [{"id": "p", "name": "P", "type": "Number", "value-key": "[P]"}]
-    return load(
+    return load_descriptor(
         {
             "schema-version": "0.5",
             "name": "t",

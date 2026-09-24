@@ -13,6 +13,9 @@ class RunResult:
     stdout: str
     stderr: str
     duration_seconds: float
+    base_command: list[str]
+    wrapper: list[str] | None
+    command: list[str]
 
 
 class RuntimeError_(RuntimeError):

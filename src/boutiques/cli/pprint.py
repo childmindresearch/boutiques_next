@@ -5,7 +5,7 @@ from __future__ import annotations
 import typer
 from rich.console import Console
 
-from boutiques.loader import DescriptorLoadError, load
+from boutiques.cli._input import load_descriptor_or_exit
 from boutiques.prettyprint import pprint as _pprint
 
 
@@ -22,11 +22,7 @@ def register(app: typer.Typer) -> None:
         ),
     ) -> None:
         """Pretty-print a Boutiques descriptor."""
-        try:
-            parsed = load(descriptor)
-        except DescriptorLoadError as exc:
-            typer.echo(str(exc), err=True)
-            raise typer.Exit(1) from exc
+        parsed = load_descriptor_or_exit(descriptor)
 
         console = Console(no_color=no_color)
         _pprint(parsed, console=console)

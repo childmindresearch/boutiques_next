@@ -58,9 +58,9 @@ candidate's `id`).
 ## Python equivalent
 
 ```python
-from boutiques import load
+from boutiques.loader import load_descriptor
 from boutiques.example import generate
 
-descriptor = load("fsl_bet.json")
+descriptor = load_descriptor("fsl_bet.json")
 invocation = generate(descriptor, complete=False)
 ```

@@ -1,11 +1,11 @@
 """Token-level resolver tests covering shell-safety and embedded value-keys."""
 
 from boutiques.execution import resolve, simulate
-from boutiques.loader import load
+from boutiques.loader import load_descriptor
 
 
 def _descriptor(inputs, command_line="tool [X]", schema_version="0.5"):
-    return load(
+    return load_descriptor(
         {
             "schema-version": schema_version,
             "name": "t",

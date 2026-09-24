@@ -55,10 +55,10 @@ variables, error codes, tests, stdout-output / stderr-output.
 ## Python equivalent
 
 ```python
-from boutiques import load
+from boutiques.loader import load_descriptor
 from boutiques.prettyprint import pprint
 
-pprint(load("fsl_bet.json"))           # to stdout
+pprint(load_descriptor("fsl_bet.json"))           # to stdout
 ```
 
 `build_tree(descriptor)` returns the `rich.tree.Tree` directly if you

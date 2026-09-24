@@ -8,7 +8,7 @@ path-template safety, duplicate ``[KEY]`` in command-line).
 from __future__ import annotations
 
 from boutiques.lint import lint
-from boutiques.loader import load
+from boutiques.loader import load_descriptor
 from boutiques.semantic import check
 
 
@@ -24,7 +24,7 @@ def _make(**overrides):
         ],
     }
     base.update(overrides)
-    return load(base)
+    return load_descriptor(base)
 
 
 # ---- Semantic: duplicate path-templates ----------------------------------
@@ -152,7 +152,7 @@ def test_single_token_does_not_lint():
 
 
 def test_orphan_token_inside_subcommand_is_an_error():
-    d = load(
+    d = load_descriptor(
         {
             "schema-version": "0.5+styx",
             "name": "t",

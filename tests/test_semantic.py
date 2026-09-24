@@ -1,6 +1,6 @@
 """Tests for cross-field semantic validation."""
 
-from boutiques.loader import load
+from boutiques.loader import load_descriptor
 from boutiques.semantic import check
 from boutiques.validate import validate
 
@@ -23,7 +23,7 @@ def _make(name="t", **overrides):
         ],
     }
     base.update(overrides)
-    return load(base)
+    return load_descriptor(base)
 
 
 # ---- per-input dependency checks ------------------------------------------
@@ -246,7 +246,7 @@ def test_subcommand_union_inherits_semantic_checks():
             }
         ],
     }
-    errors = check(load(raw))
+    errors = check(load_descriptor(raw))
     assert any("exclusive-minimum" in str(e) for e in errors)
 
 

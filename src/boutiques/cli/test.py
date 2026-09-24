@@ -6,8 +6,8 @@ from pathlib import Path
 
 import typer
 
+from boutiques.cli._input import load_descriptor_or_exit
 from boutiques.execution.runtime.base import RuntimeError_
-from boutiques.loader import DescriptorLoadError, load
 from boutiques.run_tests import run_tests as _run_tests
 
 
@@ -30,11 +30,7 @@ def register(app: typer.Typer) -> None:
         ),
     ) -> None:
         """Run every test case declared on the descriptor."""
-        try:
-            parsed = load(descriptor)
-        except DescriptorLoadError as exc:
-            typer.echo(str(exc), err=True)
-            raise typer.Exit(1) from exc
+        parsed = load_descriptor_or_exit(descriptor)
 
         if not parsed.tests:
             typer.echo(f"{parsed.name}: no tests declared.")

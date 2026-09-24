@@ -9,12 +9,12 @@ import pytest
 
 from boutiques.execution import launch
 from boutiques.execution.runtime.base import RunResult, RuntimeError_
-from boutiques.loader import load
+from boutiques.loader import load_descriptor
 
 
 def _echo_descriptor():
     """A trivial descriptor that wraps the platform 'echo'-like behavior."""
-    return load(
+    return load_descriptor(
         {
             "schema-version": "0.5",
             "name": "echo_test",
@@ -22,8 +22,18 @@ def _echo_descriptor():
             "tool-version": "1.0",
             "command-line": "[PYTHON] -c [SCRIPT] [MSG]",
             "inputs": [
-                {"id": "python", "name": "P", "type": "String", "value-key": "[PYTHON]"},
-                {"id": "script", "name": "S", "type": "String", "value-key": "[SCRIPT]"},
+                {
+                    "id": "python",
+                    "name": "P",
+                    "type": "String",
+                    "value-key": "[PYTHON]",
+                },
+                {
+                    "id": "script",
+                    "name": "S",
+                    "type": "String",
+                    "value-key": "[SCRIPT]",
+                },
                 {"id": "msg", "name": "M", "type": "String", "value-key": "[MSG]"},
             ],
         }
@@ -47,7 +57,8 @@ def test_local_runtime_runs_real_subprocess(tmp_path):
     assert result.exit_code == 0
     assert "hi from boutiques" in result.stdout
     assert result.runtime == "local"
-    assert result.command[0] == sys.executable
+    assert result.base_command[0] == sys.executable
+    assert result.wrapper is None
 
 
 def test_local_runtime_propagates_exit_code(tmp_path):
@@ -67,7 +78,7 @@ def test_local_runtime_propagates_exit_code(tmp_path):
 
 
 def _docker_descriptor():
-    return load(
+    return load_descriptor(
         {
             "schema-version": "0.5",
             "name": "in_container",
@@ -82,13 +93,40 @@ def _docker_descriptor():
     )
 
 
-def _fake_run_subprocess(captured: dict):
-    """A run_subprocess stand-in that records its argv and returns success."""
+def _file_descriptor():
+    return load_descriptor(
+        {
+            "schema-version": "0.5",
+            "name": "file_input",
+            "description": "Takes a file input",
+            "tool-version": "1.0",
+            "command-line": "tool [IN]",
+            "inputs": [
+                {"id": "f", "name": "F", "type": "File", "value-key": "[IN]"},
+            ],
+            "container-image": {"type": "docker", "image": "example/tool"},
+        }
+    )
 
-    def _impl(argv, **kwargs):
-        captured["argv"] = argv
-        captured["kwargs"] = kwargs
-        return RunResult(exit_code=0, stdout="", stderr="", duration_seconds=0.0)
+
+def _fake_run_subprocess(captured: dict):
+    """A run_subprocess stand-in that records the spawned command and succeeds."""
+
+    def _impl(base_command, **kwargs):
+        wrapper = kwargs.get("wrapper")
+        command = wrapper + base_command if wrapper else base_command
+        captured["argv"] = command
+        captured["base_command"] = base_command
+        captured["wrapper"] = wrapper
+        return RunResult(
+            exit_code=0,
+            stdout="",
+            stderr="",
+            duration_seconds=0.0,
+            base_command=base_command,
+            wrapper=wrapper,
+            command=command,
+        )
 
     return _impl
 
@@ -99,7 +137,7 @@ def test_docker_runtime_wraps_argv(tmp_path):
         "boutiques.execution.runtime.docker.run_subprocess",
         side_effect=_fake_run_subprocess(captured),
     ):
-        launch(_docker_descriptor(), {"x": "hello"}, runtime="docker", cwd=tmp_path)
+        result = launch(_docker_descriptor(), {"x": "hello"}, runtime="docker", cwd=tmp_path)
 
     argv = captured["argv"]
     assert argv[:3] == ["docker", "run", "--rm"]
@@ -107,10 +145,13 @@ def test_docker_runtime_wraps_argv(tmp_path):
     assert "example/tool" in argv
     image_idx = argv.index("example/tool")
     assert argv[image_idx + 1 :] == ["do_thing", "hello"]
+    assert result.base_command == ["do_thing", "hello"]
+    assert result.wrapper == argv[: image_idx + 1]
+    assert result.wrapper is not None
 
 
 def test_docker_with_index_prepends_registry(tmp_path):
-    descriptor = load(
+    descriptor = load_descriptor(
         {
             "schema-version": "0.5",
             "name": "x",
@@ -192,6 +233,367 @@ def test_singularity_runtime_uses_docker_uri(tmp_path):
     assert "docker://example/tool" in argv
 
 
+def test_singularity_uses_existing_local_imagepath(tmp_path):
+    img = tmp_path / "local.sif"
+    img.write_bytes(b"")
+    captured: dict = {}
+    with (
+        patch(
+            "boutiques.execution.runtime.singularity.run_subprocess",
+            side_effect=_fake_run_subprocess(captured),
+        ),
+        patch(
+            "boutiques.execution.runtime.singularity.shutil.which",
+            return_value=None,
+        ),
+    ):
+        launch(
+            _docker_descriptor(),
+            {"x": "hi"},
+            runtime="singularity",
+            cwd=tmp_path,
+            image_path=img,
+        )
+
+    argv = captured["argv"]
+    assert argv[0] == "singularity"
+    assert str(img) in argv
+    assert not any("docker://" in token for token in argv)
+
+
+def test_cli_launch_imagepath_uses_local_image(tmp_path):
+    import json
+
+    from typer.testing import CliRunner
+
+    from boutiques.cli import app
+
+    descriptor_path = tmp_path / "descriptor.json"
+    descriptor_path.write_text(
+        json.dumps(
+            {
+                "schema-version": "0.5",
+                "name": "t",
+                "description": "x",
+                "tool-version": "1.0",
+                "command-line": "tool [X]",
+                "inputs": [{"id": "x", "name": "X", "type": "String", "value-key": "[X]"}],
+                "container-image": {"type": "docker", "image": "example/tool"},
+            }
+        )
+    )
+    inv_path = tmp_path / "inv.json"
+    inv_path.write_text('{"x": "v"}')
+    img = tmp_path / "local.sif"
+    img.write_bytes(b"")
+
+    captured: dict = {}
+    with (
+        patch(
+            "boutiques.execution.runtime.singularity.run_subprocess",
+            side_effect=_fake_run_subprocess(captured),
+        ),
+        patch(
+            "boutiques.execution.runtime.singularity.shutil.which",
+            return_value=None,
+        ),
+    ):
+        result = CliRunner().invoke(
+            app,
+            [
+                "exec",
+                "launch",
+                str(descriptor_path),
+                str(inv_path),
+                "-r",
+                "singularity",
+                "--imagepath",
+                str(img),
+            ],
+        )
+
+    assert result.exit_code == 0
+    argv = captured["argv"]
+    assert str(img) in argv
+    assert not any("docker://" in token for token in argv)
+
+
+def test_singularity_auto_pulls_missing_imagepath(tmp_path):
+    img = tmp_path / "pulled.sif"
+    pull_argv: list[list[str]] = []
+    exec_captured: dict = {}
+
+    def fake_run(base_command, **kwargs):
+        wrapper = kwargs.get("wrapper")
+        command = wrapper + base_command if wrapper else base_command
+        if base_command[1] == "pull":
+            pull_argv.append(base_command)
+            img.write_bytes(b"")
+        else:
+            exec_captured["argv"] = command
+        return RunResult(
+            exit_code=0,
+            stdout="",
+            stderr="",
+            duration_seconds=0.0,
+            base_command=base_command,
+            wrapper=wrapper,
+            command=command,
+        )
+
+    with (
+        patch(
+            "boutiques.execution.runtime.singularity.run_subprocess",
+            side_effect=fake_run,
+        ),
+        patch(
+            "boutiques.execution.runtime.singularity.shutil.which",
+            return_value=None,
+        ),
+    ):
+        launch(
+            _docker_descriptor(),
+            {"x": "hi"},
+            runtime="singularity",
+            cwd=tmp_path,
+            image_path=img,
+        )
+
+    assert pull_argv == [["singularity", "pull", str(img), "docker://example/tool"]]
+    assert str(img) in exec_captured["argv"]
+
+
+def test_singularity_no_pull_missing_imagepath_errors(tmp_path):
+    img = tmp_path / "missing.sif"
+    with pytest.raises(RuntimeError_, match="--no-pull"):
+        launch(
+            _docker_descriptor(),
+            {"x": "hi"},
+            runtime="singularity",
+            cwd=tmp_path,
+            image_path=img,
+            no_pull=True,
+        )
+
+
+def test_singularity_no_pull_allows_existing_imagepath(tmp_path):
+    img = tmp_path / "local.sif"
+    img.write_bytes(b"")
+    captured: dict = {}
+    with (
+        patch(
+            "boutiques.execution.runtime.singularity.run_subprocess",
+            side_effect=_fake_run_subprocess(captured),
+        ),
+        patch(
+            "boutiques.execution.runtime.singularity.shutil.which",
+            return_value=None,
+        ),
+    ):
+        launch(
+            _docker_descriptor(),
+            {"x": "hi"},
+            runtime="singularity",
+            cwd=tmp_path,
+            image_path=img,
+            no_pull=True,
+        )
+
+    assert str(img) in captured["argv"]
+
+
+def test_singularity_no_pull_refuses_remote_uri(tmp_path):
+    with pytest.raises(RuntimeError_, match="--no-pull is specified without --imagepath"):
+        launch(
+            _docker_descriptor(),
+            {"x": "hi"},
+            runtime="singularity",
+            cwd=tmp_path,
+            no_pull=True,
+        )
+
+
+def test_imagepath_rejected_for_non_singularity_runtime(tmp_path):
+    img = tmp_path / "local.sif"
+    img.write_bytes(b"")
+    for runtime in ("docker", "local"):
+        with pytest.raises(RuntimeError_, match="only applies to the singularity runtime"):
+            launch(
+                _docker_descriptor(),
+                {"x": "hi"},
+                runtime=runtime,
+                cwd=tmp_path,
+                image_path=img,
+            )
+
+
+def test_cli_launch_imagepath_with_docker_errors(tmp_path):
+    import json
+
+    from typer.testing import CliRunner
+
+    from boutiques.cli import app
+
+    descriptor_path = tmp_path / "descriptor.json"
+    descriptor_path.write_text(
+        json.dumps(
+            {
+                "schema-version": "0.5",
+                "name": "t",
+                "description": "x",
+                "tool-version": "1.0",
+                "command-line": "tool [X]",
+                "inputs": [{"id": "x", "name": "X", "type": "String", "value-key": "[X]"}],
+                "container-image": {"type": "docker", "image": "example/tool"},
+            }
+        )
+    )
+    inv_path = tmp_path / "inv.json"
+    inv_path.write_text('{"x": "v"}')
+    img = tmp_path / "local.sif"
+    img.write_bytes(b"")
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "exec",
+            "launch",
+            str(descriptor_path),
+            str(inv_path),
+            "-r",
+            "docker",
+            "--imagepath",
+            str(img),
+        ],
+    )
+    assert result.exit_code == 2
+    combined = (result.stdout or "") + (result.stderr or "")
+    assert "only applies to the singularity runtime" in combined
+
+
+def test_docker_no_pull_adds_pull_never(tmp_path):
+    captured: dict = {}
+    with patch(
+        "boutiques.execution.runtime.docker.run_subprocess",
+        side_effect=_fake_run_subprocess(captured),
+    ):
+        launch(
+            _docker_descriptor(),
+            {"x": "hi"},
+            runtime="docker",
+            cwd=tmp_path,
+            no_pull=True,
+        )
+
+    assert "--pull=never" in captured["argv"]
+
+
+def test_docker_no_automounts_skips_file_mounts(tmp_path):
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    file_path = data_dir / "input.nii"
+    file_path.write_bytes(b"")
+
+    captured: dict = {}
+    with patch(
+        "boutiques.execution.runtime.docker.run_subprocess",
+        side_effect=_fake_run_subprocess(captured),
+    ):
+        launch(
+            _file_descriptor(),
+            {"f": str(file_path)},
+            runtime="docker",
+            cwd=tmp_path,
+            no_automounts=True,
+        )
+
+    argv = captured["argv"]
+    mount_pairs = [argv[i + 1] for i, t in enumerate(argv) if t == "-v"]
+    assert mount_pairs == [f"{tmp_path}:{tmp_path}"]
+    assert str(data_dir) not in " ".join(mount_pairs)
+
+
+def test_singularity_no_automounts_skips_file_mounts(tmp_path):
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    file_path = data_dir / "input.nii"
+    file_path.write_bytes(b"")
+
+    captured: dict = {}
+    with (
+        patch(
+            "boutiques.execution.runtime.singularity.run_subprocess",
+            side_effect=_fake_run_subprocess(captured),
+        ),
+        patch(
+            "boutiques.execution.runtime.singularity.shutil.which",
+            return_value=None,
+        ),
+    ):
+        launch(
+            _file_descriptor(),
+            {"f": str(file_path)},
+            runtime="singularity",
+            cwd=tmp_path,
+            no_automounts=True,
+        )
+
+    argv = captured["argv"]
+    binds = [argv[i + 1] for i, t in enumerate(argv) if t == "--bind"]
+    assert binds == [str(tmp_path.resolve())]
+
+
+def test_cli_launch_no_automounts_flag(tmp_path):
+    import json
+
+    from typer.testing import CliRunner
+
+    from boutiques.cli import app
+
+    descriptor_path = tmp_path / "descriptor.json"
+    descriptor_path.write_text(
+        json.dumps(
+            {
+                "schema-version": "0.5",
+                "name": "t",
+                "description": "x",
+                "tool-version": "1.0",
+                "command-line": "tool [IN]",
+                "inputs": [{"id": "f", "name": "F", "type": "File", "value-key": "[IN]"}],
+                "container-image": {"type": "docker", "image": "example/tool"},
+            }
+        )
+    )
+    inv_path = tmp_path / "inv.json"
+    inv_path.write_text('{"f": "/data/input.nii"}')
+
+    captured: dict = {}
+    with patch(
+        "boutiques.execution.runtime.docker.run_subprocess",
+        side_effect=_fake_run_subprocess(captured),
+    ):
+        result = CliRunner().invoke(
+            app,
+            [
+                "exec",
+                "launch",
+                str(descriptor_path),
+                str(inv_path),
+                "-r",
+                "docker",
+                "--cwd",
+                str(tmp_path),
+                "--no-automounts",
+            ],
+        )
+
+    assert result.exit_code == 0
+    argv = captured["argv"]
+    mount_pairs = [argv[i + 1] for i, t in enumerate(argv) if t == "-v"]
+    assert mount_pairs == [f"{tmp_path}:{tmp_path}"]
+    assert not any("/data" in m for m in mount_pairs)
+
+
 def test_cli_force_docker_aliases_runtime(tmp_path):
     """`--force-docker` (classic-bosh compat) selects the docker runtime, -v appends mounts."""
     import json
@@ -219,9 +621,21 @@ def test_cli_force_docker_aliases_runtime(tmp_path):
 
     captured: dict = {}
 
-    def fake_run(argv, **kwargs):
-        captured["argv"] = argv
-        return RunResult(exit_code=0, stdout="", stderr="", duration_seconds=0.0)
+    def fake_run(base_command, **kwargs):
+        wrapper = kwargs.get("wrapper")
+        command = wrapper + base_command if wrapper else base_command
+        captured["argv"] = command
+        captured["base_command"] = base_command
+        captured["wrapper"] = wrapper
+        return RunResult(
+            exit_code=0,
+            stdout="",
+            stderr="",
+            duration_seconds=0.0,
+            base_command=base_command,
+            wrapper=wrapper,
+            command=command,
+        )
 
     with patch("boutiques.execution.runtime.docker.run_subprocess", side_effect=fake_run):
         result = CliRunner().invoke(
@@ -244,6 +658,47 @@ def test_cli_force_docker_aliases_runtime(tmp_path):
     assert argv[0] == "docker"
     for pair in ("/a:/b", "/c:/d"):
         assert pair in argv
+    combined = (result.stdout or "") + (result.stderr or "")
+    assert "[bosh] command: tool v" in combined
+    assert "[bosh] wrapper:" in combined
+    assert "docker run --rm" in combined
+    assert "example/tool" in combined
+
+
+def test_cli_local_launch_prints_command_with_no_wrapper(tmp_path):
+    """Local runtime prints the command but no wrapper line."""
+    import json
+
+    from typer.testing import CliRunner
+
+    from boutiques.cli import app
+
+    descriptor_path = tmp_path / "descriptor.json"
+    descriptor_path.write_text(
+        json.dumps(
+            {
+                "schema-version": "0.5",
+                "name": "t",
+                "description": "x",
+                "tool-version": "1.0",
+                "command-line": "[PYTHON] -c [SCRIPT]",
+                "inputs": [
+                    {"id": "python", "name": "P", "type": "String", "value-key": "[PYTHON]"},
+                    {"id": "script", "name": "S", "type": "String", "value-key": "[SCRIPT]"},
+                ],
+            }
+        )
+    )
+    inv_path = tmp_path / "inv.json"
+    inv_path.write_text(json.dumps({"python": sys.executable, "script": "pass"}))
+
+    result = CliRunner().invoke(
+        app, ["exec", "launch", str(descriptor_path), str(inv_path), "--cwd", str(tmp_path)]
+    )
+    assert result.exit_code == 0
+    combined = (result.stdout or "") + (result.stderr or "")
+    assert "[bosh] command:" in combined
+    assert "[bosh] wrapper:" not in combined
 
 
 def test_cli_force_multiple_runtimes_errors(tmp_path):
@@ -420,7 +875,7 @@ def test_default_value_satisfies_validation_like_classic():
     satisfies a one-is-required group must not be rejected."""
     from boutiques.invocation_check import validate_invocation
 
-    descriptor = load(
+    descriptor = load_descriptor(
         {
             "schema-version": "0.5",
             "name": "t",
@@ -436,10 +891,21 @@ def test_default_value_satisfies_validation_like_classic():
                     "default-value": "on",
                     "value-key": "[A]",
                 },
-                {"id": "b", "name": "B", "type": "String", "optional": True, "value-key": "[B]"},
+                {
+                    "id": "b",
+                    "name": "B",
+                    "type": "String",
+                    "optional": True,
+                    "value-key": "[B]",
+                },
             ],
             "groups": [
-                {"id": "g", "name": "G", "members": ["a", "b"], "one-is-required": True},
+                {
+                    "id": "g",
+                    "name": "G",
+                    "members": ["a", "b"],
+                    "one-is-required": True,
+                },
             ],
         }
     )
@@ -471,7 +937,7 @@ def test_cli_launch_unimplemented_flag_refuses(tmp_path):
 
     result = CliRunner().invoke(
         app,
-        ["exec", "launch", str(descriptor_path), '{"x": "v"}', "--no-pull"],
+        ["exec", "launch", str(descriptor_path), '{"x": "v"}', "--user"],
     )
     assert result.exit_code == 2
     combined = (result.stdout or "") + (result.stderr or "")
@@ -491,7 +957,7 @@ def test_unknown_runtime_raises():
 
 def test_output_paths_resolve_against_cwd(tmp_path):
     """Path-template substitution + existence check (no subprocess)."""
-    descriptor = load(
+    descriptor = load_descriptor(
         {
             "schema-version": "0.5",
             "name": "with_output",
@@ -516,7 +982,7 @@ def test_output_paths_resolve_against_cwd(tmp_path):
 
 def test_environment_variables_are_passed(tmp_path):
     """Env vars declared by the descriptor reach the subprocess."""
-    descriptor = load(
+    descriptor = load_descriptor(
         {
             "schema-version": "0.5",
             "name": "env_check",
@@ -524,8 +990,18 @@ def test_environment_variables_are_passed(tmp_path):
             "tool-version": "1.0",
             "command-line": "[PYTHON] -c [SCRIPT]",
             "inputs": [
-                {"id": "python", "name": "P", "type": "String", "value-key": "[PYTHON]"},
-                {"id": "script", "name": "S", "type": "String", "value-key": "[SCRIPT]"},
+                {
+                    "id": "python",
+                    "name": "P",
+                    "type": "String",
+                    "value-key": "[PYTHON]",
+                },
+                {
+                    "id": "script",
+                    "name": "S",
+                    "type": "String",
+                    "value-key": "[SCRIPT]",
+                },
             ],
             "environment-variables": [{"name": "BOUTIQUES_TEST_VAR", "value": "from_descriptor"}],
         }

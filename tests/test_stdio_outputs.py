@@ -8,7 +8,7 @@ import pytest
 
 from boutiques.execution import launch
 from boutiques.execution.outputs import resolve_stdio_outputs
-from boutiques.loader import DescriptorLoadError, load
+from boutiques.loader import DescriptorLoadError, load_descriptor
 from boutiques.models.v05_styx import StderrOutput, StdoutOutput
 
 
@@ -23,7 +23,7 @@ def _make(extra=None):
     }
     if extra:
         base.update(extra)
-    return load(base)
+    return load_descriptor(base)
 
 
 # ---- Model loading -------------------------------------------------------
@@ -56,7 +56,7 @@ def test_both_stdio_outputs_coexist():
 def test_v05_rejects_stdout_output():
     """v0.5 stays strict — only v0.5+styx accepts these fields."""
     with pytest.raises(DescriptorLoadError, match="Extra inputs are not permitted"):
-        load(
+        load_descriptor(
             {
                 "schema-version": "0.5",
                 "name": "t",
