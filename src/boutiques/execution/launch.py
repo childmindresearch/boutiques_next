@@ -13,6 +13,7 @@ from boutiques.execution.outputs import (
     resolve_stdio_outputs,
 )
 from boutiques.execution.resolve import resolve
+from boutiques.execution.runtime import apptainer as _apptainer
 from boutiques.execution.runtime import docker as _docker
 from boutiques.execution.runtime import local as _local
 from boutiques.execution.runtime import singularity as _singularity
@@ -24,6 +25,7 @@ _RUNTIMES = {
     "local": _local,
     "docker": _docker,
     "singularity": _singularity,
+    "apptainer": _apptainer,
 }
 
 
@@ -58,9 +60,10 @@ def launch(
     if runtime not in _RUNTIMES:
         raise RuntimeError_(f"Unknown runtime {runtime!r}. Known: {', '.join(sorted(_RUNTIMES))}.")
     if image_path is not None:
-        if runtime != "singularity":
+        if runtime not in ("singularity", "apptainer"):
             raise RuntimeError_(
-                f"--imagepath only applies to the singularity runtime (runtime={runtime!r})."
+                f"--imagepath only applies to the singularity and apptainer runtimes "
+                f"(runtime={runtime!r})."
             )
         if isinstance(descriptor.container_image, RootfsImage):
             raise RuntimeError_(
